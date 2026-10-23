@@ -44,7 +44,7 @@ static const char *const g_system[] = {
     "kernel32", "user32", "gdi32", "advapi32", "shell32", "ole32", "oleaut32", "winmm",
     "wsock32", "ws2_32", "ddraw", "dsound", "dinput", "version", "comctl32", "comdlg32",
     "ntdll", "msvcrt", "imm32", "mpr", "rpcrt4", "uuid", "dplayx", "d3dim",
-    "wininet", "shlwapi", "mswsock",
+    "wininet", "shlwapi", "mswsock", "opengl32",
 };
 
 static void base_of(const char *path, char *out, size_t n) {
@@ -155,7 +155,7 @@ static void k_LoadLibraryA(void) {
     }
     pe_image img;
     if (!found || (hle_load_translated_module ? hle_load_translated_module(host,&img) : recomp_pe_map_any(host, &img)) != 0) {
-        fprintf(stderr, "[module] LoadLibraryA(\"%s\"): not found\n", name);
+        fprintf(stderr, "[module] LoadLibraryA(\"%s\"): not found guest=%08x name_va=%08x\n", name,g_cur_func,A32(0));
         hle_set_last_error(ERROR_MOD_NOT_FOUND);
         RET(0, 1);
     }

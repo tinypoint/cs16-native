@@ -13,7 +13,7 @@ ROOT=Path(__file__).resolve().parents[1];GEN=ROOT/'.local/lift/hl';OUT=ROOT/'.lo
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--diagnostic',action='store_true',help='Allow modules with reported semantic gaps; unsupported instructions still abort');args=ap.parse_args()
-    modules=[GEN,*[ROOT/'.local/lift'/name for name in ('filesystem','vgui','steam','mss32','dbg','hw')]]
+    modules=[GEN,*[ROOT/'.local/lift'/name for name in ('filesystem','vgui','steam','mss32','dbg','hw','cstrike-client','particleman','vgui2','gameui','demoplayer')]]
     for module in modules:
         result=json.loads((module/'result.json').read_text())
         if result['generationErrors'] or (not args.diagnostic and any(result[k] for k in ('unimplementedInstructions','uncleanExtents'))):
@@ -36,12 +36,17 @@ def main():
             materialized=build/p.name
             materialized.write_text(source.replace(needle,needle+'\n#include "cs16_dispatch.h"'))
             lifted.append(materialized)
-    sources=lifted+sorted((ROOT/'runtime/win32').glob('*.c'))+[ROOT/'runtime/guest/guest_memory.c',ROOT/'runtime/guest/dispatch.c',ROOT/'runtime/launcher_host.c',ROOT/'runtime/original_modules.c',dispatch]
+    sources=lifted+sorted((ROOT/'runtime/win32').glob('*.c'))+sorted((ROOT/'runtime/guest').glob('*.c'))+[ROOT/'runtime/launcher_host.c',ROOT/'runtime/original_modules.c',dispatch]
     flags=['/usr/bin/clang','-arch','arm64','-O0','-g','-DRECOMP_LOCAL_REGS','-fno-strict-aliasing','-fwrapv','-ffp-contract=off','-include',str(ROOT/'runtime/guest/guest_cpu.h'),'-I',str(GEN),'-I',str(ROOT/'runtime/win32'),'-I',str(ROOT/'runtime/guest'),'-I',str(ROOT/'vendor/pcrecomp/runtime/recomp32')]
-    signature=hashlib.sha256((' '.join(flags)).encode()+b''.join(p.read_bytes() for folder in [*modules,ROOT/'runtime/win32',ROOT/'runtime/guest',ROOT/'vendor/pcrecomp/runtime/recomp32'] for p in sorted(folder.glob('*.h')))).digest()
+    frameworks=ROOT/'.local/Frameworks'
+    if not all((frameworks/(name+'.framework/Headers')).exists() for name in ('SDL2','SDL2_ttf')):
+        raise SystemExit('Install native display dependencies with tools/setup_native_display.py first')
+    flags+=['-F',str(frameworks),'-I',str(frameworks/'SDL2.framework/Headers')]
+    signature=hashlib.sha256((' '.join(flags)).encode()+b''.join(p.read_bytes() for folder in [ROOT/'runtime/win32',ROOT/'runtime/guest',ROOT/'vendor/pcrecomp/runtime/recomp32'] for p in sorted(folder.glob('*.h')))).digest()
     def build(source):
         name=source.stem+'-'+hashlib.sha256(str(source.relative_to(ROOT)).encode()).hexdigest()[:12]
-        target=obj/(name+'.o');stamp=target.with_suffix('.sha');digest=hashlib.sha256(signature+source.read_bytes()).hexdigest()
+        headers=b''.join(p.read_bytes() for pattern in ('*.h','*.inc') for p in sorted(source.parent.glob(pattern)))
+        target=obj/(name+'.o');stamp=target.with_suffix('.sha');digest=hashlib.sha256(signature+headers+source.read_bytes()).hexdigest()
         if target.exists() and stamp.exists() and stamp.read_text()==digest:return target
         p=subprocess.run([*flags,'-c',str(source),'-o',str(target)],capture_output=True,text=True,timeout=300)
         (OUT/(name+'.log')).write_text(p.stdout+p.stderr)
@@ -53,7 +58,7 @@ def main():
             try:objects.append(f.result())
             except Exception as e:errors.append(str(e));print(str(e),flush=True)
     if errors:raise SystemExit(1)
-    p=subprocess.run(['/usr/bin/clang','-arch','arm64',*map(str,objects),'-o',str(OUT/'cs16-original-launcher')],capture_output=True,text=True,timeout=60)
+    p=subprocess.run(['/usr/bin/clang','-arch','arm64',*map(str,objects),'-F',str(frameworks),'-framework','SDL2','-framework','SDL2_ttf','-framework','OpenGL','-Wl,-rpath,'+str(frameworks),'-o',str(OUT/'cs16-original-launcher')],capture_output=True,text=True,timeout=60)
     (OUT/'link.log').write_text(p.stdout+p.stderr)
     if p.returncode:raise SystemExit(p.stderr[-3000:])
     print('Original launcher ARM64 host built:',round(time.monotonic()-start,2),'seconds')

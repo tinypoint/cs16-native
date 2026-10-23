@@ -15,7 +15,9 @@ def main():
     ap=argparse.ArgumentParser(description=__doc__)
     probes=ap.add_mutually_exclusive_group()
     probes.add_argument('--probe-filesystem',action='store_true')
-    probes.add_argument('--probe-version',action='store_true');args=ap.parse_args()
+    probes.add_argument('--probe-version',action='store_true')
+    probes.add_argument('--probe-ui',action='store_true')
+    probes.add_argument('--probe-x87',action='store_true');args=ap.parse_args()
     source=ROOT/'game/upload-531009895/CounterStrike1.6';stage=ROOT/'.local/run/game'
     if not stage.exists():
         stage.parent.mkdir(parents=True,exist_ok=True)
@@ -24,7 +26,8 @@ def main():
         if p.returncode:
             if stage.exists():raise RuntimeError('Partial staging copy; inspect before retrying')
             shutil.copytree(source,stage)
-    names={'hl':'hl.exe','filesystem':'FileSystem_Stdio.dll','vgui':'vgui.dll','steam':'Steam.dll','mss32':'Mss32.dll','dbg':'dbg.dll','hw':'hw.dll'}
+    names={'hl':'hl.exe','filesystem':'FileSystem_Stdio.dll','vgui':'vgui.dll','steam':'Steam.dll','mss32':'Mss32.dll','dbg':'dbg.dll','hw':'hw.dll','cstrike-client':'cstrike/cl_dlls/client.dll','particleman':'valve/cl_dlls/particleman.dll'}
+    names.update({'vgui2':'vgui2.dll','gameui':'valve/cl_dlls/GameUI.dll','demoplayer':'DemoPlayer.dll'})
     hashes={}
     for module,name in names.items():
         expected=json.loads((ROOT/'.local/lift'/module/'result.json').read_text())['inputSha256']
@@ -32,11 +35,12 @@ def main():
         if digest!=expected:raise RuntimeError('Staged module differs from translated input: '+name)
         hashes[name]=digest
     binary=ROOT/'.local/launcher-native/cs16-original-launcher'
-    mode='filesystem-probe' if args.probe_filesystem else 'version-probe' if args.probe_version else 'launcher-run'
+    probe=next((name for name in ('filesystem','version','ui','x87') if getattr(args,'probe_'+name)),None)
+    mode=probe+'-probe' if probe else 'launcher-run'
     log=ROOT/'logs'/(mode+'.log')
-    command=[str(binary),'hl.exe']+(['--probe-filesystem'] if args.probe_filesystem else ['--probe-version'] if args.probe_version else [])
+    command=[str(binary),'hl.exe']+(['--probe-'+probe] if probe else [])
     with log.open('w') as stream:
-        p=subprocess.run(command,cwd=stage,env={**os.environ,'HLE_FILETRACE':'1'},stdout=stream,stderr=subprocess.STDOUT,timeout=25)
+        p=subprocess.run(command,cwd=stage,env={**os.environ,'HLE_FILETRACE':'1','CS16_FRAME_CAPTURE':str(ROOT/'.local/first-game-buffer.bmp')},stdout=stream,stderr=subprocess.STDOUT,timeout=25)
     text=log.read_text(errors='replace');faults=[line for line in text.splitlines() if any(s in line for s in ['FATAL:','[cs16-boot] signal=','watchdog','RaiseException(','[guest-exception]'])]
     record={'exitCode':p.returncode,'inputModulesVerified':hashes,
             'originalLauncherEntryReached':'original launcher CRT entry=' in text,
@@ -44,7 +48,11 @@ def main():
             'originalDllMainSuccesses':text.count('original DllMain returned 1'),
             'originalFactoryResolved':'original export filesystem_stdio.dll -> 40005570' in text,
             'engineFileOpened':bool(re.search(r'\[file\] CreateFileA .*\\hw\.dll.* ok',text)),
-            'stopDiagnostics':faults[-4:],'gamePlayable':False}
+            'stopDiagnostics':faults[-4:],'gamePlayable':False,
+            'nativeWindows':re.findall(r'\[native-window\] created (.*)',text),
+            'presentedDirectDrawSurface':'first DirectDraw presentation' in text}
+    record['createdOpenGLContext']='native context created' in text
+    record['presentedOpenGLBuffer']='first guest buffer swap' in text
     if args.probe_filesystem:
         for line in text.splitlines():
             if line.startswith('{"originalFilesystemProbe"'):record['filesystemProbe']=json.loads(line)
@@ -58,7 +66,15 @@ def main():
         actual=record['versionProbe']
         assert (actual['fileVersionMS'],actual['fileVersionLS'],actual['fileVersionText'])==(fixed.FileVersionMS,fixed.FileVersionLS,expected_text)
         record['versionMatchesIndependentParser']=True;pe.close()
-    output=ROOT/'logs'/('filesystem-probe-result.json' if args.probe_filesystem else 'version-probe-result.json' if args.probe_version else 'original-startup-result.json')
+    if args.probe_ui or args.probe_x87:
+        key=probe+'Probe'
+        lines=[line for line in text.splitlines() if line.startswith('{"'+key+'"')]
+        if p.returncode or not lines:raise RuntimeError('Probe failed; see '+str(log))
+        record[key]=json.loads(lines[-1])
+        if args.probe_x87:
+            from check_x87_reference import verify
+            record['x86Reference']=verify(record[key])
+    output=ROOT/'logs'/(probe+'-probe-result.json' if probe else 'original-startup-result.json')
     output.write_text(json.dumps(record,indent=2)+'\n');print(json.dumps(record,indent=2))
     return p.returncode if p.returncode>=0 else 128-p.returncode
 

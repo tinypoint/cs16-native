@@ -77,27 +77,33 @@ static void mach_take(void) {
 typedef struct {
     uint32_t eax, ecx, edx, esp, ebx, esi, edi, ebp, fs, cur;
     double   st[8];
+    int64_t st_i64[8];
     int      fp_top;
     uint16_t fpu_cw;
     uint64_t mm[8];
     xmm_t xmm[8];
     uint32_t mxcsr, gs, flag_k, flag_a, flag_b, flag_cf;
+    uint32_t x87_environment[4];
 } regs_t;
 
 static void regs_save(regs_t *r) {
+    cs16_x87_snapshot(r->x87_environment);
     r->eax=g_eax; r->ecx=g_ecx; r->edx=g_edx; r->esp=g_esp;
     r->ebx=g_ebx; r->esi=g_esi; r->edi=g_edi; r->ebp=g_ebp;
     r->fs=g_fs_base; r->cur=g_cur_func;
     memcpy(r->st, g_st, sizeof g_st); r->fp_top=g_fp_top; r->fpu_cw=g_fpu_cw;
+    memcpy(r->st_i64,g_st_i64,sizeof g_st_i64);
     memcpy(r->mm, g_mm, sizeof g_mm);
     memcpy(r->xmm,g_xmm,sizeof g_xmm);r->mxcsr=g_mxcsr;r->gs=g_gs_base;
     r->flag_k=g_flag_k;r->flag_a=g_flag_a;r->flag_b=g_flag_b;r->flag_cf=g_flag_cf;
 }
 static void regs_load(const regs_t *r) {
+    cs16_x87_restore(r->x87_environment);
     g_eax=r->eax; g_ecx=r->ecx; g_edx=r->edx; g_esp=r->esp;
     g_ebx=r->ebx; g_esi=r->esi; g_edi=r->edi; g_ebp=r->ebp;
     g_fs_base=r->fs; g_cur_func=r->cur;
     memcpy(g_st, r->st, sizeof g_st); g_fp_top=r->fp_top; g_fpu_cw=r->fpu_cw;
+    memcpy(g_st_i64,r->st_i64,sizeof g_st_i64);
     memcpy(g_mm, r->mm, sizeof g_mm);
     memcpy(g_xmm,r->xmm,sizeof g_xmm);g_mxcsr=r->mxcsr;g_gs_base=r->gs;
     g_flag_k=r->flag_k;g_flag_a=r->flag_a;g_flag_b=r->flag_b;g_flag_cf=r->flag_cf;

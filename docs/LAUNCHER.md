@@ -6,6 +6,8 @@
 
 先按 README 准备输入、工具和 Python 环境。当前实验固定上传包版本；其他版本不能照用地址。
 
+窗口阶段新增 SDL 依赖和五个客户端／UI 模块，完整补充步骤见 [窗口与图形阶段](NATIVE_DISPLAY.md)。下列命令仍是基础模块步骤，应与补充步骤一起执行。
+
 ```sh
 .venv/bin/python tools/lift_original.py game/upload-531009895/CounterStrike1.6/hl.exe --output .local/lift/hl
 .venv/bin/python tools/lift_original.py game/upload-531009895/CounterStrike1.6/FileSystem_Stdio.dll --output .local/lift/filesystem --image-base 0x40000000

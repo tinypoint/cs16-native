@@ -22,6 +22,33 @@ from disasm32 import Disassembler
 from pe_analyze import Section, analyze_pe, build_iat_map
 from generate import true_extent, linear_disassemble_function, lift_function_linear, write_chunk, EXTENT_REACH
 from lift32 import Lifter
+from capstone.x86 import X86_OP_MEM
+
+# Extend the pinned converter locally; upstream sources remain unchanged.
+_upstream_instruction=Lifter.lift_instruction
+def lift_with_x87_environment(self,insn):
+    m=insn.mnemonic
+    prefixes=[]
+    if m in ('fnstenv','fstenv','fldenv'):
+        for byte in insn.bytes:
+            if byte not in (0x26,0x2e,0x36,0x3e,0x64,0x65,0x66,0x67,0xf0,0xf2,0xf3):break
+            prefixes.append(byte)
+    if m in ('finit','fninit'):return ['cs16_x87_init(); _fpu_cmp=1;']
+    if m in ('fclex','fnclex'):return ['cs16_x87_clear();']
+    if m in ('fnstenv','fstenv','fldenv') and 0x66 not in prefixes and len(insn.operands)==1 and insn.operands[0].type==X86_OP_MEM:
+        address=self._fmt_mem_addr(insn.operands[0].mem)
+        operation=f'cs16_x87_store_env({address});' if m!='fldenv' else f'_fpu_cmp=cs16_x87_load_env({address});'
+        return [operation+f' /* 0x{insn.address:08X}: {m} {insn.op_str} */']
+    lines=_upstream_instruction(self,insn)
+    controls=('fnstcw','fstcw','fldcw','fnstsw','fstsw','fnclex','fclex','fninit','finit','fwait','wait')
+    if m.startswith('f') and m not in controls and not any('UNIMPLEMENTED' in s for s in lines):
+        memory=next((o for o in insn.operands if o.type==X86_OP_MEM),None)
+        address=self._fmt_mem_addr(memory.mem) if memory else '0'
+        raw=bytes(insn.bytes);op=((raw[0]&7)<<8)|raw[1] if len(raw)>1 else 0
+        compared=int((m.startswith(('fcom','fucom')) and 'i' not in m) or m in ('ftst','fxam','fprem','fprem1','fsin','fcos','fsincos','fptan'))
+        lines.append(f'cs16_x87_note(0x{insn.address:08X}u,0x{op:X}u,{address},{int(memory is not None)},_fpu_cmp,{compared});')
+    return lines
+Lifter.lift_instruction=lift_with_x87_environment
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
@@ -55,10 +82,22 @@ def main():
         assert all(code_start<=a<code_end for a in seeds),'Unrecognized BLOB code layout'
         sections=[Section('blob'+str(i),s['address']-base,s['memoryBytes'],s['address']-base,s['fileBytes'],0x60000020 if i==0 else 0x40000040) for i,s in enumerate(meta['sections'])]
         iat={i['iatAddress']:(i['dll'],i['name']) for i in meta['imports']}
+    # MSVC takes addresses of import jump thunks as callbacks/vtable slots.
+    # Validate the complete FF 25 absolute operand against the real IAT;
+    # ordinary prologue discovery can miss these six-byte function bodies.
+    import_thunks=set();position=code_start-base
+    while True:
+        position=image.find(b'\xff\x25',position,code_end-base)
+        if position<0:break
+        if position+6<=len(image) and int.from_bytes(image[position+2:position+6],'little') in iat:
+            import_thunks.add(base+position)
+        position+=1
+    seeds|=import_thunks
     cache=out/'catalog.json';meta_path=out/'catalog-source.json'
     cache_key={'sha256':digest,'imageBase':base}
     if cache.exists() and meta_path.exists() and all(json.loads(meta_path.read_text()).get(k)==v for k,v in cache_key.items()):
         starts={a for a in json.loads(cache.read_text()) if code_start<=a<code_end}
+        starts|=seeds
     else:
         funcs=Disassembler(image,base,sections).find_functions(code_start,code_end,iat,seeds=seeds,release_operands=True)
         starts={a for a in set(funcs)|seeds if code_start<=a<code_end}
@@ -97,7 +136,7 @@ def main():
     (out/'recomp_funcs.h').write_text('\n'.join(header)+'\n')
     table='#include "recomp_funcs.h"\nconst recomp_dispatch_entry_t recomp_dispatch_table[] = {\n'+''.join(f'{{0x{a:08X},sub_{a:08X}}},\n' for a in sorted(done))+'};\nconst uint32_t recomp_dispatch_count = '+str(len(done))+';\n'
     (out/'recomp_dispatch.c').write_text(table)
-    report={'inputSha256':digest,'format':kind,'imageBase':base,'codeStart':code_start,'codeEnd':code_end,'generatedFunctions':len(done),'files':chunk_index,
+    report={'inputSha256':digest,'format':kind,'imageBase':base,'codeStart':code_start,'codeEnd':code_end,'verifiedImportThunkSeeds':len(import_thunks),'generatedFunctions':len(done),'files':chunk_index,
             'generationErrors':errors,'unimplementedInstructions':unsupported,'uncleanExtents':dirty,
             'elapsedSeconds':round(time.monotonic()-started,2),'compiled':False,'gameLaunched':False,
             'scope':'Static module translation experiment; discovery is heuristic and callbacks, imports, relocations, execution and behavior remain unverified.'}

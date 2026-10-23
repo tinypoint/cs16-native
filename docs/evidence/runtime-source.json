@@ -69,6 +69,26 @@
     {
       "path": "runtime/guest/guest_cpu.h",
       "sourceSha256": "b702a82686f4568a93d3461cce0fecd545d5a00ee78e8e48c00ab65dcc1fa3fa"
+    },
+    {
+      "path": "runtime/win32/user32.c",
+      "sourceSha256": "98a06e2259257a4dac1ec2ce0a605d732d1124efff44ca0a5eafdaf46fbf29ca"
+    },
+    {
+      "path": "runtime/win32/gdidc.c",
+      "sourceSha256": "4d8ea073fe1030989754c06f546064d34cdcaedfd7810390e2913cbd107c44ee"
+    },
+    {
+      "path": "runtime/win32/gdi32.c",
+      "sourceSha256": "b0099cf2a1d22f2171392ec0e31637fbb54e6936fe8fc84c6f03183baec78aa3"
+    },
+    {
+      "path": "runtime/win32/ole32.c",
+      "sourceSha256": "1742221ca1c6c904aac7f026085929559579ad61c8ea9be183204275560a124f"
+    },
+    {
+      "path": "runtime/win32/ddraw.c",
+      "sourceSha256": "58f9e9213f19be0f84f576751e48d3193a5a67b44c976f74f74a3caad8659340"
     }
   ]
 }

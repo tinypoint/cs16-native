@@ -2,6 +2,11 @@
 #define CS16_DISPATCH_H
 #include "recomp_types.h"
 recomp_func_t cs16_transfer_target(uint32_t va);
+void cs16_x87_store_env(uint32_t address);
+int cs16_x87_load_env(uint32_t address);
+void cs16_x87_note(uint32_t ip,uint32_t opcode,uint32_t data,int has_data,int compare,int compared);
+void cs16_x87_init(void);
+void cs16_x87_clear(void);
 
 /* A guest JMP must not accumulate native C frames. All lifted/shim targets
    have the same void(void) ABI, so Clang musttail preserves guest state while

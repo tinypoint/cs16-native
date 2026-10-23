@@ -14,10 +14,14 @@ static void fault(int sig,siginfo_t *info,void *context){
 }
 static void timeout(int sig){(void)sig;fprintf(stderr,"[cs16-boot] watchdog guest=%08x import=%s\n",g_cur_func,g_cur_import?g_cur_import:"none");_exit(124);}
 void recomp_not_lifted(uint32_t va){hle_fatal("untranslated function %08x",va);}
-extern const win32hle_shim win32hle_user32_text[];
 extern const win32hle_shim win32hle_path_extra[];
 extern const win32hle_shim win32hle_version[];
 extern void cs16_original_modules_install(void);
+extern void cs16_native_window_install(void);
+extern int cs16_probe_ui(void);
+extern int cs16_probe_x87(void);
+extern void cs16_opengl_register(void);
+extern const win32hle_shim win32hle_crypto_random[];
 static void messagebox(void){
  fprintf(stderr,"[cs16-boot] original dialog title=%s text=%s flags=%08x\n",ASTR(2)?ASTR(2):"",ASTR(1)?ASTR(1):"",A32(3));
  hle_fatal("Original program requested a dialog; diagnostic host stops here");
@@ -75,10 +79,15 @@ int main(int argc,char **argv){
  win32hle_register(win32hle_kernel32);win32hle_register(win32hle_kernel32_crt);
  win32hle_register(win32hle_kernel32_ext);win32hle_register(win32hle_module);
  win32hle_register(win32hle_winmm);win32hle_register(win32hle_wsock32);win32hle_register(win32hle_advapi32);
- win32hle_register(win32hle_user32_text);
+ win32hle_register(win32hle_user32);
+ win32hle_register(win32hle_gdi32);win32hle_register(win32hle_gdidc);
+ win32hle_register(win32hle_ole32);win32hle_register(win32hle_ddraw);
  win32hle_register(win32hle_path_extra);
  win32hle_register(win32hle_version);
  cs16_original_modules_install();
+ cs16_native_window_install();
+ cs16_opengl_register();
+ win32hle_register(win32hle_crypto_random);
  static const win32hle_shim diagnostics[]={{"MessageBoxA",messagebox},{0,0}};win32hle_register(diagnostics);
  char directory[4096];if(!getcwd(directory,sizeof directory))return 2;
  hle_set_drive('C',directory);hle_set_command_line("hl.exe -game cstrike -console -windowed");
@@ -86,9 +95,11 @@ int main(int argc,char **argv){
  char guest[4096];hle_guest_path(argv[1],guest,sizeof guest);
  hle_module_add(guest,image.base,image.resource_rva,image.resource_size,1);
  if(recomp_pe_bind(&image,hle_resolve_or_stub))return 3;
- win32hle_trace=1;
+ win32hle_trace=getenv("CS16_TRACE")!=NULL;
  if(argc==3 && !strcmp(argv[2],"--probe-filesystem"))return probe_filesystem();
  if(argc==3 && !strcmp(argv[2],"--probe-version"))return probe_version();
+ if(argc==3 && !strcmp(argv[2],"--probe-ui"))return cs16_probe_ui();
+ if(argc==3 && !strcmp(argv[2],"--probe-x87"))return cs16_probe_x87();
  fprintf(stderr,"[cs16-boot] original launcher CRT entry=%08x target=ARM64\n",image.entry);
  uint32_t result=hle_call_guest(image.entry,0,NULL);
  fprintf(stderr,"[cs16-boot] original launcher returned %08x\n",result);

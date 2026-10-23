@@ -16,6 +16,10 @@ static int map_module(const char *path,pe_image *image){
  if(!strcasecmp(name,"Steam.dll"))return recomp_pe_map_fixed(path,image,0x20000000);
  if(!strcasecmp(name,"Mss32.dll"))return recomp_pe_map_fixed(path,image,0x21100000);
  if(!strcasecmp(name,"dbg.dll"))return recomp_pe_map_fixed(path,image,0x40200000);
+ if(!strcasecmp(name,"particleman.dll"))return recomp_pe_map_fixed(path,image,0x40300000);
+ if(!strcasecmp(name,"vgui2.dll"))return recomp_pe_map_fixed(path,image,0x41000000);
+ if(!strcasecmp(name,"GameUI.dll"))return recomp_pe_map_fixed(path,image,0x43000000);
+ if(!strcasecmp(name,"DemoPlayer.dll"))return recomp_pe_map_fixed(path,image,0x45000000);
  hle_fatal("original DLL has no translated module registered yet: %s",name);
  return 1;
 }
