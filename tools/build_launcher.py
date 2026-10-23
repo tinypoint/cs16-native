@@ -8,6 +8,7 @@ import subprocess
 import time
 import re
 import argparse
+from migration_patches import materialize
 
 ROOT=Path(__file__).resolve().parents[1];GEN=ROOT/'.local/lift/hl';OUT=ROOT/'.local/launcher-native'
 
@@ -32,7 +33,7 @@ def main():
         (build/'recomp_funcs.h').write_bytes((module/'recomp_funcs.h').read_bytes())
         for p in sorted(module.glob('recomp_*.c')):
             if p.name=='recomp_dispatch.c':continue
-            source=p.read_text();needle='#include "recomp_types.h"';assert source.count(needle)==1
+            source=materialize(module.name,p.name,p.read_text(),json.loads((module/'result.json').read_text())['inputSha256']);needle='#include "recomp_types.h"';assert source.count(needle)==1
             if args.profile_entries:
                 source=re.sub(r'(RECOMP_ENTER\((0x[0-9A-Fa-f]+)u\);)',lambda m:m[1]+' cs16_profile_target('+m[2]+');',source)
                 source=source.replace('#include "recomp_funcs.h"','#include "recomp_funcs.h"\nvoid cs16_profile_target(uint32_t);')

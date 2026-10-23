@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "version": "0.0.3",
+  "userRequestedDirectBypass": true,
+  "optionalSwitch": false,
+  "scope": "CS migration builds: shared macOS and Web materialization",
+  "inputGameuiSha256": "2f1424c3e9a471c5b92d42aaaad6e63227fd6af5967915482c48c75028a8ced9",
+  "originalInputFilesUnchanged": true,
+  "transformedControlFlowChanged": true,
+  "branch": "43022B20 -> existing success cleanup 43022BBB",
+  "checks": [
+    "input SHA-256 guard",
+    "unique source markers",
+    "original stack/register cleanup retained"
+  ],
+  "browser": {
+    "frame": true,
+    "error": null,
+    "reload": {
+      "frame": true,
+      "largeResourceRequests": []
+    },
+    "build": {
+      "loaderSha256": "06333a14a85762ab9b9d2900fc9bb50cfce4ce21db6a25ee3655110a9372d217",
+      "runtimeSha256": "e0026725d5b40acadbb5cd67026dc122a68cce713f36d801cd29f3c54f9aa045",
+      "resourceSha256": "9f98ea7d103f760a70d18b8551dab4e5a4837174653297aa73a127fab17da8ae"
+    },
+    "bypassLogObserved": true,
+    "rejectionLogObserved": false
+  },
+  "display": "CS original main menu, no CD Key dialog",
+  "previewOnly": true,
+  "resourceSha256Unchanged": "9f98ea7d103f760a70d18b8551dab4e5a4837174653297aa73a127fab17da8ae",
+  "reportSha256": "ef61fbd420f1597322bc563597cf2f26e815639484548b7bb5c25491e4264d67",
+  "native": {
+    "arm64BuildPassed": true,
+    "runtimeReachedBypass": false,
+    "unrelatedExistingStop": "Unresolved original control transfer target=00000000 from=01d59200 before startup gate"
+  }
+}

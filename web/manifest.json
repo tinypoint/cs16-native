@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "ready": false,
   "runtime": null,
   "resources": null,
@@ -8,12 +8,12 @@
   "preview": {
     "ready": true,
     "mode": "original-wasm-first-frame",
-    "base": "/artifact/02ac5753b42e3d31f089a6d737aa7a5a524456a9a4e3285f28342096410fc9c3/",
+    "base": "/artifact/11c41692bbf8253886dd19e788e41bb52dfbcbf01ea681d491dd59f89daeafb0/",
     "runtime": {
-      "url": "/artifact/02ac5753b42e3d31f089a6d737aa7a5a524456a9a4e3285f28342096410fc9c3/cs16-web.wasm.gz",
-      "bytes": 11193250,
-      "decodedBytes": 52117586,
-      "sha256": "3fff01ceb036fcf2bdf6e03b891de7f8b1752ea9fdf40b8ed136bb910bd2c9ad"
+      "url": "/artifact/11c41692bbf8253886dd19e788e41bb52dfbcbf01ea681d491dd59f89daeafb0/cs16-web.wasm.gz",
+      "bytes": 11192500,
+      "decodedBytes": 52112856,
+      "sha256": "e0026725d5b40acadbb5cd67026dc122a68cce713f36d801cd29f3c54f9aa045"
     },
     "resources": {
       "url": "/resources/9f98ea7d103f760a70d18b8551dab4e5a4837174653297aa73a127fab17da8ae/startup.cs16pack.gz",

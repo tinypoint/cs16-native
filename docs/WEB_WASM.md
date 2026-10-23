@@ -40,3 +40,9 @@
 启动资源另外需要 `.local/fonts/LiberationSans-Regular.ttf` 和同发行版的 `LICENSE`，来源为 Liberation Fonts 2.1.5。`--adapter-probe` 检查虚拟网卡的 ABI／缓冲边界与实际套接字队列限额。
 
 正式加载器检查使用 `tools/check_web_frame.cjs`，通过 `CS16_PLAYWRIGHT` 指定 Playwright 包路径、`CS16_BROWSER_EXECUTABLE` 指定 Chromium 路径；`CS16_CHECK_RELOAD=1` 额外检查刷新后没有再次请求大程序包和资源包。验证记录绑定实际压缩程序、加载器与资源哈希，无法拿其他构建的首帧证据发布。
+
+## v0.0.3：直接跳过启动 CD Key 门禁
+
+用户明确要求直接跳过，因而没有运行时或构建开关。`tools/migration_patches.py` 被 macOS 和 Web 两个构建共同调用，在物化 C 源码时将 GameUI 的启动拒绝分支 `43022B20` 转到原有成功清理路径 `43022BBB`，保留原函数的寄存器恢复与栈清理。通过固定 GameUI 输入 SHA-256 和唯一标记校验版本，版本不符时拒绝套用。上传的 EXE／DLL 和初始转换输出均不改写；转换后的控制流有这一处明确修改。
+
+浏览器验证已显示 New Game／Find Servers／Options 主菜单，没有 CD Key 弹窗；这不代表已经接通输入、地图或联机，也不生成激活码或 Steam 授权。资源包哈希不变。v0.0.2 的历史首屏证据保留，新证据另存 `evidence/web-cdkey-bypass.json`。

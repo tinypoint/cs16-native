@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Experimental original-program Wasm build; never substitutes game logic.
+"""Experimental original-program Wasm build with explicit migration patches.
 
-Platform materializations remain in .local. The native build is unchanged.
+Platform adaptations remain in .local. Shared migration changes are explicit.
 """
 import argparse,hashlib,json,os,re,subprocess,time
+from migration_patches import materialize
 from concurrent.futures import ThreadPoolExecutor,as_completed
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
@@ -30,7 +31,7 @@ def main():
   entries += [(int(a,16),symbol) for a,symbol in re.findall(r'\{0x([0-9A-Fa-f]+),\s*(sub_[0-9A-Fa-f]+)\}',(folder/'recomp_dispatch.c').read_text())]
   for p in sorted(folder.glob('recomp_*.c')):
    if p.name=='recomp_dispatch.c':continue
-   s=p.read_text()
+   s=materialize(name,p.name,p.read_text(),result['inputSha256'])
    if selected is not None:
     functions=list(re.finditer(r'^void sub_([0-9A-Fa-f]+)\(void\)\s*\{',s,re.M));parts=[s[:functions[0].start()]+'\nvoid cs16_web_unloaded(uint32_t);\n']
     for i,m in enumerate(functions):

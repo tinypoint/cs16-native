@@ -14,7 +14,7 @@
 
 - 源码仓库：https://github.com/tinypoint/cs16-native （同时维护 macOS 与 Web）。
 - 固定 HTTPS 入口：https://cs16-native.vercel.app/ 。
-- Web 首屏实验版本：v0.0.2。原始 hl.exe／DLL 在浏览器本机执行，显示 CS 背景与原程序的 CD Key 输入窗口；保留原检查，暂不可操作。清单顶层 `ready=false`，单独开放 `preview`。
+- Web 首屏实验版本：v0.0.3。原始引擎在浏览器本机执行，启动时直接进入 CS 主菜单，暂不可操作。按用户要求，迁移构建直接跳过启动 CD Key 门禁，无开关；这是对转换后控制流的一处明确修改，原输入文件不变。清单顶层 `ready=false`，单独开放 `preview`。
 - Vercel 项目：`cs16-web`。网页目录为 `web/`，与红警项目独立。
 - 首屏实验通过 `tools/prepare_web_preview.py` 与 `tools/publish_web_preview.py` 发布；Vercel 返回未安装 GitHub 集成，尚未启用推送自动部署。详细步骤见 [部署说明](docs/DEPLOYMENT.md)。
 
