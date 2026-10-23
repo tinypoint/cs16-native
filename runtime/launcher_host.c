@@ -21,7 +21,9 @@ extern void cs16_native_window_install(void);
 extern int cs16_probe_ui(void);
 extern int cs16_probe_x87(void);
 extern int cs16_probe_exceptions(void);
+extern int cs16_probe_browser(void);
 extern void cs16_opengl_register(void);
+extern void cs16_webbrowser_install(void);
 extern const win32hle_shim win32hle_crypto_random[];
 static void messagebox(void){
  fprintf(stderr,"[cs16-boot] original dialog title=%s text=%s flags=%08x\n",ASTR(2)?ASTR(2):"",ASTR(1)?ASTR(1):"",A32(3));
@@ -88,6 +90,7 @@ int main(int argc,char **argv){
  cs16_original_modules_install();
  cs16_native_window_install();
  cs16_opengl_register();
+ cs16_webbrowser_install();
  win32hle_register(win32hle_crypto_random);
  static const win32hle_shim diagnostics[]={{"MessageBoxA",messagebox},{0,0}};win32hle_register(diagnostics);
  char directory[4096];if(!getcwd(directory,sizeof directory))return 2;
@@ -101,6 +104,7 @@ int main(int argc,char **argv){
  if(argc==3 && !strcmp(argv[2],"--probe-version"))return probe_version();
  if(argc==3 && !strcmp(argv[2],"--probe-ui"))return cs16_probe_ui();
  if(argc==3 && !strcmp(argv[2],"--probe-x87"))return cs16_probe_x87();
+ if(argc==3 && !strcmp(argv[2],"--probe-browser"))return cs16_probe_browser();
  if(argc==3 && !strcmp(argv[2],"--probe-exception"))return cs16_probe_exceptions();
  fprintf(stderr,"[cs16-boot] original launcher CRT entry=%08x target=ARM64\n",image.entry);
  uint32_t result=hle_call_guest(image.entry,0,NULL);

@@ -58,7 +58,9 @@ static uint32_t virtual_key(SDL_Keycode key){
  if(key>=SDLK_F1&&key<=SDLK_F12)return 0x70u+(uint32_t)(key-SDLK_F1);
  switch(key){case SDLK_ESCAPE:return 27;case SDLK_RETURN:return 13;case SDLK_SPACE:return 32;case SDLK_TAB:return 9;case SDLK_BACKSPACE:return 8;case SDLK_UP:return 38;case SDLK_DOWN:return 40;case SDLK_LEFT:return 37;case SDLK_RIGHT:return 39;case SDLK_LSHIFT:case SDLK_RSHIFT:return 16;case SDLK_LCTRL:case SDLK_RCTRL:return 17;case SDLK_LALT:case SDLK_RALT:return 18;default:return 0;}
 }
+extern void cs16_webbrowser_pump(void);
 static void pump(void){
+ cs16_webbrowser_pump();
  if(!initialized)return;update_cursor();SDL_Event event;
  while(SDL_PollEvent(&event)){
   uint32_t id=event.type==SDL_WINDOWEVENT?event.window.windowID:event.type==SDL_MOUSEMOTION?event.motion.windowID:event.type==SDL_KEYDOWN||event.type==SDL_KEYUP?event.key.windowID:event.button.windowID;

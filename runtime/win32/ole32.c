@@ -97,11 +97,18 @@ static uint32_t vcall(uint32_t obj, int slot, int nargs, const uint32_t *args) {
 }
 
 static void o_CoCreateInstance(void) {                   /* (clsid, outer, ctx, iid, &out) */
+    if(!gm_accessible(A32(4),4,1))RET(0x80004003u,5);
+    MEM32(A32(4))=0;
+    if(!gm_accessible(A32(0),16,0)||!gm_accessible(A32(3),16,0))RET(0x80004003u,5);
     const uint8_t *clsid = (const uint8_t *)APTR(0);
     char s[40];
     if (A32(4)) MEM32(A32(4)) = 0;
     for (int i = 0; clsid && i < g_nclass; i++)
-        if (!memcmp(g_class[i].clsid, clsid, 16)) RET(g_class[i].create((const uint8_t *)APTR(3), (uint32_t *)APTR(4)), 5);
+        if (!memcmp(g_class[i].clsid, clsid, 16)) {
+            if(!(A32(2)&3))RET(REGDB_E_CLASSNOTREG,5);
+            if(A32(1))RET(0x80040110u /* CLASS_E_NOAGGREGATION */,5);
+            RET(g_class[i].create((const uint8_t *)APTR(3), (uint32_t *)APTR(4)), 5);
+        }
     for (int i = 0; clsid && i < MAX_GUEST_CLASSES; i++)
         if (g_guest_class[i].unk && !memcmp(g_guest_class[i].clsid, clsid, 16)) {
             uint8_t *scratch=gm_calloc(1,20);

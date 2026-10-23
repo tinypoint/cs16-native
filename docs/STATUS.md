@@ -23,13 +23,17 @@
 - 原 SteamOpenFile 的异常存在原有捕获路径；现已接入受限 MSVC x86 C++ 异常展开，执行原清理、捕获函数并返回原继续地址，未修改原初始化检查。原 VGUI2 DllMain 随后返回成功，累计 8 个原 DLL 入口成功，并读到 TrackerScheme.res 和菜单图标资源。
 - 补充原 VGUI2 所需的字体枚举回调、Unicode ABC 字宽、MM_TEXT 坐标转换，修正 TEXTMETRICA 字符字段偏移；独立 UI 检查通过。
 - 异常运行时的 4 组控制用例、捕获函数分析的 3 组边界用例通过；文件系统、版本资源、图形和原 x87 控制函数回归通过。这些证据不代表完整 C++／SEH 支持。
-- 当前停在原 HTML 面板创建 Windows WebBrowser 控件。宿主没有此 COM 类，原代码未检查创建失败便使用空指针；现明确诊断缺失接口后中止。没有原游戏缓冲区交换或游戏画面。
+- 原 HTML 面板已成功创建系统 WebKit 对象，原启动继续读到 MOTD、队伍选择、计分板、旁观界面与 config.cfg。没有改写原构造函数或游戏菜单。
+- 网页组件独立检查通过：真实本地 HTML 加载、DOM 标题与滚动、连接点通知、接口身份和引用生命周期、真实快照写入访客 DIB（红／蓝上下像素核对）。共 6 个独立检查通过；当前网页桥接仍为部分实现，未完成输入、完整 MSHTML 和浏览器后端。
+- 当前停在原 Mss32 音频初始化调用的 DuplicateHandle；原启动还报告没有可用的 DirectSoundCreate。没有原游戏缓冲区交换或游戏画面。
 
 上一阶段启动与两个独立检查的精简结果：[original-startup.json](evidence/original-startup.json)。复现与限制：[诊断宿主说明](LAUNCHER.md)。
 
 当前窗口与图形证据：[native-display-startup.json](evidence/native-display-startup.json)，复现说明：[NATIVE_DISPLAY.md](NATIVE_DISPLAY.md)。
 
 最新异常、字体与启动证据：[exception-startup.json](evidence/exception-startup.json)，[实现范围与当前缺口](NATIVE_EXCEPTION.md)。
+
+最新 WebKit 与启动证据：[webbrowser-startup.json](evidence/webbrowser-startup.json)，[网页组件实现范围](WEBBROWSER.md)。
 
 ## 批量静态转换实验
 
@@ -53,7 +57,7 @@
 
 ## 当前边界与下一步
 
-完整 CS 1.6 尚未启动；没有已验证的 Mac 应用或可玩 Web 页面。下一步实现原 HTML 面板要求的 WebBrowser COM 适配，继续核对菜单、原客户端回调和图形缺口。当前仅 Steam 的转换结果含异常继续入口；其他模块、完整 C++／SEH、DLL 生命周期、Wasm 内存布局与尾调用兼容仍需完成。
+完整 CS 1.6 尚未启动；没有已验证的 Mac 应用或可玩 Web 页面。下一步接通原音频初始化的句柄接口并核对声音后端，继续追踪菜单、原客户端回调和图形缺口。当前仅 Steam 的转换结果含异常继续入口；其他模块、完整 C++／SEH、DLL 生命周期、Wasm 内存布局与尾调用兼容仍需完成。
 
 上游基础检查的 16 项通过和之前的源码引擎编译属于已否决的 Xash 路线，不计入本项目原程序迁移证据。红警仓库保持不变。
 

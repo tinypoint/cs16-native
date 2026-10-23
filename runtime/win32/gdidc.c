@@ -405,6 +405,15 @@ static void put(dc_t *d, int x, int y, uint32_t v) {
     if (d->bpp == 16) *(uint16_t *)p = (uint16_t)v;
     else if (d->bpp == 32) *(uint32_t *)p = v;
 }
+/* IViewObject snapshots enter the same real guest-selected DIB as fonts. */
+int cs16_gdi_write_rgba(uint32_t hdc,const uint8_t *rgba,int sw,int sh,int x,int y,int w,int h){
+ dc_t *d=DC(hdc);if(!d||!d->px||!rgba||sw<1||sh<1||w<1||h<1||(d->bpp!=16&&d->bpp!=32))return 0;
+ int64_t dx=(int64_t)x-d->wox+d->vox,dy=(int64_t)y-d->woy+d->voy;
+ for(int row=0;row<h;row++){int64_t ty=dy+row;if(ty<0||ty>=d->h)continue;int sy=(int)((int64_t)row*sh/h);
+  for(int col=0;col<w;col++){int64_t tx=dx+col;if(tx<0||tx>=d->w)continue;int sx=(int)((int64_t)col*sw/w);const uint8_t *p=rgba+((size_t)sy*sw+sx)*4;
+   put(d,(int)tx,(int)ty,pack(d,(uint32_t)p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)));}}
+ return 1;
+}
 static uint32_t get(dc_t *d, int x, int y) {
     const uint8_t *p = d->px + (ptrdiff_t)y * d->pitch + (ptrdiff_t)x * (d->bpp / 8);
     return d->bpp == 16 ? *(const uint16_t *)p : *(const uint32_t *)p;

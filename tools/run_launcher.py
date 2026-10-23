@@ -18,6 +18,7 @@ def main():
     probes.add_argument('--probe-version',action='store_true')
     probes.add_argument('--probe-ui',action='store_true')
     probes.add_argument('--probe-x87',action='store_true')
+    probes.add_argument('--probe-browser',action='store_true')
     probes.add_argument('--probe-exception',action='store_true');args=ap.parse_args()
     source=ROOT/'game/upload-531009895/CounterStrike1.6';stage=ROOT/'.local/run/game'
     if not stage.exists():
@@ -36,7 +37,7 @@ def main():
         if digest!=expected:raise RuntimeError('Staged module differs from translated input: '+name)
         hashes[name]=digest
     binary=ROOT/'.local/launcher-native/cs16-original-launcher'
-    probe=next((name for name in ('filesystem','version','ui','x87','exception') if getattr(args,'probe_'+name)),None)
+    probe=next((name for name in ('filesystem','version','ui','x87','exception','browser') if getattr(args,'probe_'+name)),None)
     mode=probe+'-probe' if probe else 'launcher-run'
     log=ROOT/'logs'/(mode+'.log')
     command=[str(binary),'hl.exe']+(['--probe-'+probe] if probe else [])
@@ -69,7 +70,7 @@ def main():
         actual=record['versionProbe']
         assert (actual['fileVersionMS'],actual['fileVersionLS'],actual['fileVersionText'])==(fixed.FileVersionMS,fixed.FileVersionLS,expected_text)
         record['versionMatchesIndependentParser']=True;pe.close()
-    if args.probe_ui or args.probe_x87 or args.probe_exception:
+    if args.probe_ui or args.probe_x87 or args.probe_exception or args.probe_browser:
         key=probe+'Probe'
         lines=[line for line in text.splitlines() if line.startswith('{"'+key+'"')]
         if p.returncode or not lines:raise RuntimeError('Probe failed; see '+str(log))

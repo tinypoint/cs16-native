@@ -43,6 +43,6 @@
 
 ## 当前停止原因
 
-本文件对应的历史证据记录了原 SteamOpenFile 的异常停止点。后续已接通受限 C++ 捕获路径，原捕获函数执行后继续进入 VGUI2 和菜单资源加载；最新停止点为未实现的 Windows WebBrowser 控件。详见 [异常处理阶段](NATIVE_EXCEPTION.md) 和 [最新证据](evidence/exception-startup.json)。
+本文件对应的历史证据记录了原 SteamOpenFile 的异常停止点。后续已接通受限 C++ 捕获路径，原捕获函数执行后继续进入 VGUI2 和菜单资源加载；随后也已接通 WebKit 初始化，最新停止点为音频初始化的 DuplicateHandle，见 [网页组件阶段](WEBBROWSER.md)。详见 [异常处理阶段](NATIVE_EXCEPTION.md) 和 [最新证据](evidence/exception-startup.json)。
 
 本阶段仍未取得原游戏缓冲区交换或游戏画面。历史结果保留在 [native-display-startup.json](evidence/native-display-startup.json)，用于区分阶段进展。
