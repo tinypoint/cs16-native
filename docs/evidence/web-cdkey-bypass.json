@@ -36,5 +36,19 @@
     "arm64BuildPassed": true,
     "runtimeReachedBypass": false,
     "unrelatedExistingStop": "Unresolved original control transfer target=00000000 from=01d59200 before startup gate"
+  },
+  "publicDeployment": {
+    "id": "dpl_AkSoehCFxiLDbT6M5joXPsBtNfTa",
+    "url": "https://cs16-native.vercel.app/",
+    "state": "READY",
+    "version": "0.0.3",
+    "browserFrame": true,
+    "reload": {
+      "frame": true,
+      "largeResourceRequests": []
+    },
+    "bypassLogObserved": true,
+    "rejectionLogObserved": false,
+    "reportSha256": "cee6018e8d9c684d99b2c6fdc4d5ae0b1af80750f133894fdce9d70e33d94d50"
   }
 }
