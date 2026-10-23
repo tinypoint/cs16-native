@@ -1,15 +1,15 @@
 /*
  * winmm.c - win32hle WINMM: multimedia timers, joystick, waveOut audio, MCI.
- * On libc for timing; audio is "accept and retire" (a silent device that
- * completes every buffer immediately, so a game's double-buffered mixer thread
- * keeps cycling without a real sound card); no joystick; MCI stubbed. Real SDL
- * audio can replace the waveOut path later without touching callers.
+ * libc timing; no waveOut device or joystick. Real output is provided by
+ * the DirectSound/SDL bridge; unsupported devices report failure.
  */
 #define _GNU_SOURCE
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <string.h>
+#include <stdio.h>
 #include "win32hle.h"
 
 #define MMSYSERR_NOERROR  0u
@@ -96,28 +96,28 @@ static void m_joyGetDevCapsA(void)  { RET(JOYERR_UNPLUGGED, 3); }
 static void m_joyGetPos(void)       { RET(JOYERR_UNPLUGGED, 2); }
 static void m_joyGetPosEx(void)     { RET(JOYERR_UNPLUGGED, 2); }
 
-/* --- waveOut: a silent device that retires every buffer at once ---
- * waveOutOpen succeeds with a fake handle; waveOutWrite marks the WAVEHDR done
- * and not-in-queue, so a mixer that waits for buffers to drain keeps going. */
-static void m_waveOutOpen(void) {              /* (&hwo, devID, &fmt, cb, inst, flags) */
-    uint32_t ph = A32(0);
-    if (ph) MEM32(ph) = 0x5A5E0001u;           /* a nonzero HWAVEOUT */
-    RET(MMSYSERR_NOERROR, 6);
-}
-static void m_waveOutWrite(void) {             /* (hwo, lpWaveHdr, cbwh) */
-    uint32_t wh = A32(1);
-    if (wh) { MEM32(wh + 16) = (MEM32(wh + 16) | WHDR_DONE) & ~WHDR_INQUEUE; }
-    RET(MMSYSERR_NOERROR, 3);
-}
-static void m_waveOutPrepareHeader(void)   { uint32_t wh=A32(1); if(wh) MEM32(wh+16)|=0x00000002u/*WHDR_PREPARED*/; RET(MMSYSERR_NOERROR, 3); }
-static void m_waveOutUnprepareHeader(void) { uint32_t wh=A32(1); if(wh) MEM32(wh+16)&=~0x00000002u; RET(MMSYSERR_NOERROR, 3); }
-static void m_waveOutReset(void)       { RET(MMSYSERR_NOERROR, 1); }
-static void m_waveOutClose(void)       { RET(MMSYSERR_NOERROR, 1); }
-static void m_waveOutGetNumDevs(void)  { RET(1, 0); }          /* one (silent) device */
-static void m_waveOutGetDevCapsA(void) { RET(MMSYSERR_NOERROR, 3); }
-
+/* waveOut is not connected yet. DirectSound below is the real output path;
+ * do not advertise a silent device or retire unplayed PCM as successful. */
+static void m_waveOutOpen(void){if(A32(0)&&gm_accessible(A32(0),4,1))MEM32(A32(0))=0;RET(6,6);}
+static void m_waveOutWrite(void){RET(5,3);}
+static void m_waveOutPrepareHeader(void){RET(5,3);}
+static void m_waveOutUnprepareHeader(void){RET(5,3);}
+static void m_waveOutReset(void){RET(5,1);}
+static void m_waveOutClose(void){RET(5,1);}
+static void m_waveOutGetNumDevs(void){RET(0,0);}
+static void m_waveOutGetDevCapsA(void){RET(2,3);}
+/* Capture and Windows mixer controls are unavailable in this host. */
+static void m_no_devices(void){RET(0,0);}
+static void m_no_device_caps(void){RET(2,3);}
+static void m_waveInOpen(void){if(A32(0)&&gm_accessible(A32(0),4,1))MEM32(A32(0))=0;RET(6,6);}
+static void m_mixerOpen(void){if(A32(0)&&gm_accessible(A32(0),4,1))MEM32(A32(0))=0;RET(6,5);}
+static void m_invalid_audio_1(void){RET(5,1);}
+static void m_invalid_audio_3(void){RET(5,3);}
+static void m_waveInGetErrorTextA(void){uint32_t size=A32(2);if(!size||!gm_accessible(A32(1),size,1))RET(11,3);const char *text="No audio capture device is connected";snprintf(APTR(1),size,"%s",text);RET(0,3);}
 /* --- MCI (CD audio / command strings): not available --- */
-static void m_mciSendStringA(void)     { RET(MMSYSERR_ERROR, 4); }
+static void m_mciSendStringA(void)     { RET(274, 4); }
+static void m_mciSendCommandA(void)    { RET(274, 4); }
+static void m_mciGetDeviceIDA(void)    { RET(0,1); }
 static void m_mciGetErrorStringA(void) { RET(0, 3); }          /* FALSE: no string */
 
 const win32hle_shim win32hle_winmm[] = {
@@ -139,6 +139,13 @@ const win32hle_shim win32hle_winmm[] = {
     { "waveOutClose",           m_waveOutClose },
     { "waveOutGetNumDevs",      m_waveOutGetNumDevs },
     { "waveOutGetDevCapsA",     m_waveOutGetDevCapsA },
+    { "waveInOpen", m_waveInOpen },{ "waveInGetNumDevs", m_no_devices },{ "waveInGetDevCapsA", m_no_device_caps },
+    { "waveInPrepareHeader", m_invalid_audio_3 },{ "waveInUnprepareHeader", m_invalid_audio_3 },{ "waveInAddBuffer", m_invalid_audio_3 },
+    { "waveInStart", m_invalid_audio_1 },{ "waveInStop", m_invalid_audio_1 },{ "waveInReset", m_invalid_audio_1 },{ "waveInClose", m_invalid_audio_1 },{ "waveInGetErrorTextA", m_waveInGetErrorTextA },
+    { "mixerOpen", m_mixerOpen },{ "mixerClose", m_invalid_audio_1 },{ "mixerGetNumDevs", m_no_devices },{ "mixerGetDevCapsA", m_no_device_caps },
+    { "mixerGetLineInfoA", m_invalid_audio_3 },{ "mixerGetLineControlsA", m_invalid_audio_3 },{ "mixerGetControlDetailsA", m_invalid_audio_3 },{ "mixerSetControlDetails", m_invalid_audio_3 },
+    { "mciSendCommandA",        m_mciSendCommandA },
+    { "mciGetDeviceIDA",        m_mciGetDeviceIDA },
     { "mciSendStringA",         m_mciSendStringA },
     { "mciGetErrorStringA",     m_mciGetErrorStringA },
     { 0, 0 }

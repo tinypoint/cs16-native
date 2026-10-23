@@ -13,7 +13,7 @@ ROOT=Path(__file__).resolve().parents[1];GEN=ROOT/'.local/lift/hl';OUT=ROOT/'.lo
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--diagnostic',action='store_true',help='Allow modules with reported semantic gaps; unsupported instructions still abort');args=ap.parse_args()
-    modules=[GEN,*[ROOT/'.local/lift'/name for name in ('filesystem','vgui','steam','mss32','dbg','hw','cstrike-client','particleman','vgui2','gameui','demoplayer')]]
+    modules=[GEN,*[ROOT/'.local/lift'/name for name in ('filesystem','vgui','steam','mss32','dbg','hw','cstrike-client','particleman','vgui2','gameui','demoplayer','mp3dec','mssv29','mssv12','voice-miles','core','swda','trackerui','serverbrowser','trackernet','steamclient','vstdlib','tier0')]]
     for module in modules:
         result=json.loads((module/'result.json').read_text())
         if result['generationErrors'] or (not args.diagnostic and any(result[k] for k in ('unimplementedInstructions','uncleanExtents'))):

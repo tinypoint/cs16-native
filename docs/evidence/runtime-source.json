@@ -89,6 +89,11 @@
     {
       "path": "runtime/win32/ddraw.c",
       "sourceSha256": "58f9e9213f19be0f84f576751e48d3193a5a67b44c976f74f74a3caad8659340"
+    },
+    {
+      "path": "runtime/win32/dsound.c",
+      "sourcePath": "runtime/win32hle-arm64/dsound.c",
+      "sourceSha256": "b4c1d18f081803dcc5e3859600db6fff3b8c769cb9e9e9be656d787906bcd9f6"
     }
   ],
   "additionalAdaptations": [

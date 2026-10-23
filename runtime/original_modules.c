@@ -19,12 +19,24 @@ static int map_module(const char *path,pe_image *image){
  if(!strcasecmp(name,"particleman.dll"))return recomp_pe_map_fixed(path,image,0x40300000);
  if(!strcasecmp(name,"vgui2.dll"))return recomp_pe_map_fixed(path,image,0x41000000);
  if(!strcasecmp(name,"GameUI.dll"))return recomp_pe_map_fixed(path,image,0x43000000);
+ if(!strcasecmp(name,"steamclient.dll"))return recomp_pe_map_fixed(path,image,0x50000000);
+ if(!strcasecmp(name,"vstdlib_s.dll"))return recomp_pe_map_fixed(path,image,0x51000000);
+ if(!strcasecmp(name,"tier0_s.dll"))return recomp_pe_map_fixed(path,image,0x52000000);
+ if(!strcasecmp(name,"TrackerNET.dll"))return recomp_pe_map_fixed(path,image,0x4e000000);
+ if(!strcasecmp(name,"TrackerUI.dll"))return recomp_pe_map_fixed(path,image,0x4a000000);
+ if(!strcasecmp(name,"ServerBrowser.dll"))return recomp_pe_map_fixed(path,image,0x4c000000);
+ if(!strcasecmp(name,"swda.dll"))return recomp_pe_map_fixed(path,image,0x49000000);
+ if(!strcasecmp(name,"core.dll"))return recomp_pe_map_fixed(path,image,0x48000000);
+ if(!strcasecmp(name,"voice_miles.dll"))return recomp_pe_map_fixed(path,image,0x47000000);
+ if(!strcasecmp(name,"Mp3dec.asi"))return recomp_pe_map_fixed(path,image,0x26f00000);
+ if(!strcasecmp(name,"Mssv29.asi"))return recomp_pe_map_fixed(path,image,0x26400000);
+ if(!strcasecmp(name,"Mssv12.asi"))return recomp_pe_map_fixed(path,image,0x26600000);
  if(!strcasecmp(name,"DemoPlayer.dll"))return recomp_pe_map_fixed(path,image,0x45000000);
  hle_fatal("original DLL has no translated module registered yet: %s",name);
  return 1;
 }
 static int is_system(const char *dll){
- static const char *names[]={"kernel32.dll","user32.dll","gdi32.dll","advapi32.dll","shell32.dll","ole32.dll","oleaut32.dll","winmm.dll","wsock32.dll","ws2_32.dll","ddraw.dll","dsound.dll","dinput.dll","version.dll","comctl32.dll","comdlg32.dll","ntdll.dll","msvcrt.dll","imm32.dll","mpr.dll","rpcrt4.dll","uuid.dll","dplayx.dll","d3dim.dll","wininet.dll","shlwapi.dll","mswsock.dll"};
+ static const char *names[]={"kernel32.dll","user32.dll","gdi32.dll","advapi32.dll","shell32.dll","ole32.dll","oleaut32.dll","winmm.dll","wsock32.dll","ws2_32.dll","ddraw.dll","dsound.dll","dinput.dll","version.dll","comctl32.dll","comdlg32.dll","ntdll.dll","msvcrt.dll","imm32.dll","mpr.dll","rpcrt4.dll","uuid.dll","dplayx.dll","d3dim.dll","wininet.dll","shlwapi.dll","mswsock.dll","iphlpapi.dll"};
  for(size_t i=0;i<sizeof(names)/sizeof(*names);i++)if(!strcasecmp(names[i],dll))return 1;
  return 0;
 }

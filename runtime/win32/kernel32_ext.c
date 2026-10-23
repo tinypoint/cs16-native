@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/sysctl.h>
 #include "win32hle.h"
 
 #define INVALID_HANDLE  0xFFFFFFFFu
@@ -565,26 +566,25 @@ static int ini_find_section(FILE *f, const char *section) {
         if (line[0] == '[' && !strncasecmp(line, want, strlen(want))) return 1;
     return 0;
 }
-static void k_GetPrivateProfileStringA(void) {           /* (sec,key,def,buf,size,file) */
-    const char *sec = ASTR(0), *key = ASTR(1), *def = ASTR(2);
-    char *buf = ASTR(3); uint32_t size = A32(4); const char *file = ASTR(5);
-    const char *val = def ? def : "";
-    char line[512];
-    FILE *f = ini_open(file, "r");
-    if (f && sec && key && ini_find_section(f, sec)) {
-        size_t kl = strlen(key);
-        while (fgets(line, sizeof line, f)) {
-            if (line[0] == '[') break;                   /* next section */
-            if (!strncasecmp(line, key, kl) && line[kl] == '=') {
-                char *v = line + kl + 1, *nl = strpbrk(v, "\r\n"); if (nl) *nl = 0;
-                static char out[512]; strncpy(out, v, sizeof out - 1); val = out; break;
-            }
-        }
-    }
-    if (f) fclose(f);
-    if (buf && size) { strncpy(buf, val, size - 1); buf[size - 1] = 0; }
-    RET(buf ? (uint32_t)strlen(buf) : 0u, 6);
+static char *profile_trim(char *s){while(*s==' '||*s=='\t')s++;size_t n=strlen(s);while(n&&(s[n-1]==' '||s[n-1]=='\t'||s[n-1]=='\r'||s[n-1]=='\n'))s[--n]=0;return s;}
+static uint32_t profile_string(const char *sec,const char *key,const char *def,uint32_t output,uint32_t size,const char *file){
+ if(!size)return 0;if(!gm_accessible(output,size,1)){hle_set_last_error(87);return 0;}
+ char *buf=gm_ptr(output);buf[0]=0;int enumerate=!sec||!key;uint32_t used=0;int truncated=0;
+ FILE *f=ini_open(file,"r");char line[4096],section[4096]="",value[4096]="";int found=0;
+ while(f&&fgets(line,sizeof line,f)){
+  char *text=profile_trim(line);if(!*text||*text==';'||*text=='#')continue;
+  char *item=NULL;
+  if(*text=='['){char *end=strchr(text+1,']');if(!end)continue;*end=0;snprintf(section,sizeof section,"%s",profile_trim(text+1));if(!sec)item=section;}
+  else if(sec&&!strcasecmp(sec,section)){char *equal=strchr(text,'=');if(!equal)continue;*equal=0;char *name=profile_trim(text);if(!key)item=name;
+   else if(!strcasecmp(name,key)){char *v=profile_trim(equal+1);size_t n=strlen(v);if(n>=2&&((*v=='\"'&&v[n-1]=='\"')||(*v=='\''&&v[n-1]=='\''))){v[n-1]=0;v++;}snprintf(value,sizeof value,"%s",v);found=1;break;}}
+  if(item){size_t n=strlen(item);if(n+used+2>size){if(size>used+2)memcpy(buf+used,item,size-used-2);truncated=1;break;}memcpy(buf+used,item,n+1);used+=(uint32_t)n+1;}
+ }
+ if(f)fclose(f);
+ if(enumerate){if(size==1){buf[0]=0;return 0;}if(truncated){buf[size-2]=buf[size-1]=0;return size-2;}buf[used]=0;if(!used)buf[1]=0;return used;}
+ const char *v=found?value:def?def:"";size_t n=strlen(v);if(!found)while(n&&(v[n-1]==' '||v[n-1]=='\t'))n--;if(n>=size)n=size-1;memcpy(buf,v,n);buf[n]=0;return (uint32_t)n;
 }
+static void k_GetPrivateProfileStringA(void){RET(profile_string(ASTR(0),ASTR(1),ASTR(2),A32(3),A32(4),ASTR(5)),6);}
+static void k_GetProfileStringA(void){RET(profile_string(ASTR(0),ASTR(1),ASTR(2),A32(3),A32(4),"C:\\windows\\win.ini"),5);}
 static void k_GetPrivateProfileIntA(void) {              /* (sec,key,def,file) */
     char buf[64] = "", def[16];
     snprintf(def, sizeof def, "%d", (int)A32(2));
@@ -662,7 +662,13 @@ static void k_GetFullPathNameA(void) {
     RET(buf ? (uint32_t)strlen(buf) : (uint32_t)strlen(abs), 4);
 }
 
+static void k_IsDebuggerPresent(void){
+ struct kinfo_proc process={0};size_t size=sizeof process;int name[]={CTL_KERN,KERN_PROC,KERN_PROC_PID,getpid()};
+ if(sysctl(name,4,&process,&size,NULL,0)||size!=sizeof process)hle_fatal("Unable to query host debugger state");
+ RET((process.kp_proc.p_flag&P_TRACED)!=0,0);
+}
 const win32hle_shim win32hle_kernel32_ext[] = {
+    { "IsDebuggerPresent", k_IsDebuggerPresent },
     { "GetFullPathNameA", k_GetFullPathNameA },
     { "_lopen", k__lopen }, { "_lcreat", k__lcreat }, { "_lread", k__lread },
     { "_lwrite", k__lwrite }, { "_lclose", k__lclose }, { "_llseek", k__llseek },
@@ -703,6 +709,7 @@ const win32hle_shim win32hle_kernel32_ext[] = {
     { "FileTimeToDosDateTime",      k_FileTimeToDosDateTime },
     { "GetTimeZoneInformation",     k_GetTimeZoneInformation },
     { "GetPrivateProfileStringA",   k_GetPrivateProfileStringA },
+    { "GetProfileStringA",          k_GetProfileStringA },
     { "GetPrivateProfileIntA",      k_GetPrivateProfileIntA },
     { "WritePrivateProfileStringA", k_WritePrivateProfileStringA },
     { 0, 0 }

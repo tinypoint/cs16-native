@@ -6,14 +6,14 @@
 
 先按 README 准备输入、工具和 Python 环境。当前实验固定上传包版本；其他版本不能照用地址。
 
-窗口阶段新增 SDL 依赖和五个客户端／UI 模块，完整补充步骤见 [窗口与图形阶段](NATIVE_DISPLAY.md)。下列命令仍是基础模块步骤，应与补充步骤一起执行。
+窗口阶段新增 SDL 依赖和五个客户端／UI 模块，完整补充步骤见 [窗口与图形阶段](NATIVE_DISPLAY.md)。下列命令仍是基础模块步骤，应与补充步骤及 [音频／依赖模块步骤](AUDIO_STARTUP.md) 一起执行。
 
 ```sh
 .venv/bin/python tools/lift_original.py game/upload-531009895/CounterStrike1.6/hl.exe --output .local/lift/hl
 .venv/bin/python tools/lift_original.py game/upload-531009895/CounterStrike1.6/FileSystem_Stdio.dll --output .local/lift/filesystem --image-base 0x40000000
 .venv/bin/python tools/lift_original.py game/upload-531009895/CounterStrike1.6/vgui.dll --output .local/lift/vgui --image-base 0x40100000
 .venv/bin/python tools/lift_original.py game/upload-531009895/CounterStrike1.6/Steam.dll --output .local/lift/steam
-.venv/bin/python tools/lift_original.py game/upload-531009895/CounterStrike1.6/Mss32.dll --output .local/lift/mss32
+.venv/bin/python tools/lift_original.py game/upload-531009895/CounterStrike1.6/Mss32.dll --output .local/lift/mss32 --entry 0x2111c344
 .venv/bin/python tools/lift_original.py game/upload-531009895/CounterStrike1.6/dbg.dll --output .local/lift/dbg --image-base 0x40200000
 .venv/bin/python tools/lift_original.py game/upload-531009895/CounterStrike1.6/hw.dll --output .local/lift/hw
 .venv/bin/python tools/build_launcher.py --diagnostic
@@ -32,7 +32,7 @@
 - BLOB 引擎由原 hl.exe 的加载代码读取和解码，不能把分析用内存映像伪装成 PE。引擎固定地址落在原启动器的大块数据预留范围内，这是当前上传程序的原布局。
 - 生成代码的跨函数 JMP 使用 Clang `musttail`，避免原代码块循环累积宿主 C 栈。普通 CALL 保持调用语义，未知目标明确中止。
 - 文件版本读取来自原 PE 的 RT_VERSION，支持根固定结构、二进制子块及 ASCII 字符串查询；非 ASCII 字符串转换会明确失败，尚无 MUI 合并。接口依据 [GetFileVersionInfoA](https://learn.microsoft.com/en-us/windows/win32/api/winver/nf-winver-getfileversioninfoa) 与 [VerQueryValueA](https://learn.microsoft.com/en-us/windows/win32/api/winver/nf-winver-verqueryvaluea) 的调用约定实现，版本字段由独立 pefile 解析结果核对。
-- C++／SEH 展开尚未实现。RaiseException 会输出有边界检查的参数、异常类型及原生调用链，并停止；不会吞掉异常或修改游戏返回值。
+- 已支持受限的原 MSVC x86 C++ 异常捕获及继续入口，范围与检查见 [异常阶段](NATIVE_EXCEPTION.md)。尚未支持的异常输出参数和原生调用链后停止，不吞掉异常或修改游戏返回值。
 
 ## 限制
 

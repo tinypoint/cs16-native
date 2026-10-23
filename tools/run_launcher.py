@@ -18,6 +18,9 @@ def main():
     probes.add_argument('--probe-version',action='store_true')
     probes.add_argument('--probe-ui',action='store_true')
     probes.add_argument('--probe-x87',action='store_true')
+    probes.add_argument('--probe-network',action='store_true')
+    probes.add_argument('--probe-audio',action='store_true')
+    probes.add_argument('--probe-kernel',action='store_true')
     probes.add_argument('--probe-browser',action='store_true')
     probes.add_argument('--probe-exception',action='store_true');args=ap.parse_args()
     source=ROOT/'game/upload-531009895/CounterStrike1.6';stage=ROOT/'.local/run/game'
@@ -29,7 +32,7 @@ def main():
             if stage.exists():raise RuntimeError('Partial staging copy; inspect before retrying')
             shutil.copytree(source,stage)
     names={'hl':'hl.exe','filesystem':'FileSystem_Stdio.dll','vgui':'vgui.dll','steam':'Steam.dll','mss32':'Mss32.dll','dbg':'dbg.dll','hw':'hw.dll','cstrike-client':'cstrike/cl_dlls/client.dll','particleman':'valve/cl_dlls/particleman.dll'}
-    names.update({'vgui2':'vgui2.dll','gameui':'valve/cl_dlls/GameUI.dll','demoplayer':'DemoPlayer.dll'})
+    names.update({'vgui2':'vgui2.dll','gameui':'valve/cl_dlls/GameUI.dll','demoplayer':'DemoPlayer.dll','mp3dec':'Mp3dec.asi','mssv29':'Mssv29.asi','mssv12':'Mssv12.asi','voice-miles':'voice_miles.dll','core':'core.dll','swda':'swda.dll','trackerui':'platform/Friends/TrackerUI.dll','serverbrowser':'platform/Servers/ServerBrowser.dll','trackernet':'platform/Friends/TrackerNET.dll','steamclient':'steamclient.dll','vstdlib':'vstdlib_s.dll','tier0':'tier0_s.dll'})
     hashes={}
     for module,name in names.items():
         expected=json.loads((ROOT/'.local/lift'/module/'result.json').read_text())['inputSha256']
@@ -37,7 +40,7 @@ def main():
         if digest!=expected:raise RuntimeError('Staged module differs from translated input: '+name)
         hashes[name]=digest
     binary=ROOT/'.local/launcher-native/cs16-original-launcher'
-    probe=next((name for name in ('filesystem','version','ui','x87','exception','browser') if getattr(args,'probe_'+name)),None)
+    probe=next((name for name in ('filesystem','version','ui','x87','exception','browser','kernel','audio','network') if getattr(args,'probe_'+name)),None)
     mode=probe+'-probe' if probe else 'launcher-run'
     log=ROOT/'logs'/(mode+'.log')
     command=[str(binary),'hl.exe']+(['--probe-'+probe] if probe else [])
@@ -70,7 +73,7 @@ def main():
         actual=record['versionProbe']
         assert (actual['fileVersionMS'],actual['fileVersionLS'],actual['fileVersionText'])==(fixed.FileVersionMS,fixed.FileVersionLS,expected_text)
         record['versionMatchesIndependentParser']=True;pe.close()
-    if args.probe_ui or args.probe_x87 or args.probe_exception or args.probe_browser:
+    if args.probe_ui or args.probe_x87 or args.probe_exception or args.probe_browser or args.probe_kernel or args.probe_audio or args.probe_network:
         key=probe+'Probe'
         lines=[line for line in text.splitlines() if line.startswith('{"'+key+'"')]
         if p.returncode or not lines:raise RuntimeError('Probe failed; see '+str(log))

@@ -25,7 +25,8 @@
 - 异常运行时的 4 组控制用例、捕获函数分析的 3 组边界用例通过；文件系统、版本资源、图形和原 x87 控制函数回归通过。这些证据不代表完整 C++／SEH 支持。
 - 原 HTML 面板已成功创建系统 WebKit 对象，原启动继续读到 MOTD、队伍选择、计分板、旁观界面与 config.cfg。没有改写原构造函数或游戏菜单。
 - 网页组件独立检查通过：真实本地 HTML 加载、DOM 标题与滚动、连接点通知、接口身份和引用生命周期、真实快照写入访客 DIB（红／蓝上下像素核对）。共 6 个独立检查通过；当前网页桥接仍为部分实现，未完成输入、完整 MSHTML 和浏览器后端。
-- 当前停在原 Mss32 音频初始化调用的 DuplicateHandle；原启动还报告没有可用的 DirectSoundCreate。没有原游戏缓冲区交换或游戏画面。
+- 后续已接通同进程句柄复制、线程对象生命周期、真实 DirectSound/CoreAudio 输出；模块表容量由 32 扩至 256，增加 Unicode 模块名、INI 字符串与部分 Winsock 桥接。原音频初始化继续执行，原 Steam 客户端、好友与服务器列表依赖模块已加载。
+- 修复 wsock32.dll / ws2_32.dll 序号 10–12 混用导致的 stdcall 栈失衡；新增直接序号调用的栈平衡检查。当前在原 steamclient.dll 的 GetAdaptersInfo 系统接口停止，尚无原游戏缓冲区交换或游戏画面。
 
 上一阶段启动与两个独立检查的精简结果：[original-startup.json](evidence/original-startup.json)。复现与限制：[诊断宿主说明](LAUNCHER.md)。
 
@@ -34,6 +35,8 @@
 最新异常、字体与启动证据：[exception-startup.json](evidence/exception-startup.json)，[实现范围与当前缺口](NATIVE_EXCEPTION.md)。
 
 最新 WebKit 与启动证据：[webbrowser-startup.json](evidence/webbrowser-startup.json)，[网页组件实现范围](WEBBROWSER.md)。
+
+最新音频、句柄和网络证据：[audio-startup.json](evidence/audio-startup.json)，[实现范围与复现](AUDIO_STARTUP.md)。
 
 ## 批量静态转换实验
 
@@ -44,7 +47,7 @@
 | filesystem | 839 | 0 | 0 | 0 |
 | vgui | 1796 | 0 | 0 | 0 |
 | steam | 32898 | 0 | 18 | 19 |
-| mss32 | 1764 | 0 | 17 | 8 |
+| mss32 | 1767 | 0 | 17 | 8 |
 | dbg | 439 | 0 | 0 | 0 |
 | hw | 15089 | 0 | 27 | 6 |
 | cstrike-client | 5908 | 0 | 16 | 2 |
@@ -52,12 +55,24 @@
 | vgui2 | 2133 | 0 | 16 | 1 |
 | gameui | 11783 | 0 | 17 | 2 |
 | demoplayer | 671 | 0 | 0 | 0 |
+| mp3dec | 535 | 0 | 22 | 0 |
+| mssv29 | 1035 | 0 | 16 | 1 |
+| mssv12 | 982 | 0 | 16 | 1 |
+| voice-miles | 338 | 0 | 0 | 0 |
+| core | 5925 | 0 | 19 | 5 |
+| swda | 1333 | 0 | 0 | 0 |
+| trackerui | 3960 | 0 | 16 | 0 |
+| serverbrowser | 9167 | 0 | 16 | 2 |
+| trackernet | 1308 | 0 | 16 | 0 |
+| steamclient | 2198 | 0 | 0 | 2 |
+| vstdlib | 1201 | 0 | 0 | 0 |
+| tier0 | 1586 | 0 | 0 | 3 |
 
 候选入口存在误识别的可能，未实现指令中部分可能来自代码边界／数据混入，不能直接按指令名补写语义。mp.dll 导出表同时含数据导出，已将不在代码范围内的数据符号排除出代码入口。所有缺口仍保存在各模块 result.json。表中除 mp 外的模块已在诊断模式编译链接，只有上述实际执行的启动路径得到验证，不能视为完整模块验证。
 
 ## 当前边界与下一步
 
-完整 CS 1.6 尚未启动；没有已验证的 Mac 应用或可玩 Web 页面。下一步接通原音频初始化的句柄接口并核对声音后端，继续追踪菜单、原客户端回调和图形缺口。当前仅 Steam 的转换结果含异常继续入口；其他模块、完整 C++／SEH、DLL 生命周期、Wasm 内存布局与尾调用兼容仍需完成。
+完整 CS 1.6 尚未启动；没有已验证的 Mac 应用或可玩 Web 页面。下一步接通原 Steam 客户端所需的网络适配器查询，继续追踪菜单、原客户端回调和首帧图形路径。当前仅 Steam 的转换结果含异常继续入口；其他模块、完整 C++／SEH、DLL 生命周期、Wasm 内存布局与尾调用兼容仍需完成。
 
 上游基础检查的 16 项通过和之前的源码引擎编译属于已否决的 Xash 路线，不计入本项目原程序迁移证据。红警仓库保持不变。
 

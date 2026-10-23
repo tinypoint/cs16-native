@@ -282,6 +282,7 @@ static void k_GetStartupInfoA(void) { uint32_t si = A32(0); if (si) { memset(gm_
 #define CS_REC(cs)   MEM32((cs) + 8)
 #define CS_OWNER(cs) MEM32((cs) + 12)
 static void k_InitializeCriticalSection(void) { uint32_t cs = A32(0); if (cs) memset(gm_ptr(cs), 0, 24), MEM32(cs + 4) = 0xFFFFFFFFu; RETV(1); }
+static void k_InitializeCriticalSectionAndSpinCount(void){uint32_t cs=A32(0);if(!gm_accessible(cs,24,1)){hle_set_last_error(87);RET(0,2);}memset(gm_ptr(cs),0,24);MEM32(cs+4)=UINT32_MAX;MEM32(cs+20)=A32(1)&0x7fffffffu;RET(1,2);}
 static void k_DeleteCriticalSection(void) { RETV(1); }
 void hle_enter_cs(uint32_t cs) {
     uint32_t me = hle_thread_id();
@@ -582,6 +583,7 @@ const win32hle_shim win32hle_kernel32[] = {
     { "lstrcmpiA",          k_lstrcmpiA },
     { "GetStartupInfoA",    k_GetStartupInfoA },
     { "InitializeCriticalSection", k_InitializeCriticalSection },
+    { "InitializeCriticalSectionAndSpinCount", k_InitializeCriticalSectionAndSpinCount },
     { "DeleteCriticalSection",     k_DeleteCriticalSection },
     { "EnterCriticalSection",      k_EnterCriticalSection },
     { "LeaveCriticalSection",      k_LeaveCriticalSection },

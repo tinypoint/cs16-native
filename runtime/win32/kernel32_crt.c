@@ -45,17 +45,50 @@ static int thread_wait(uint32_t handle) {
     thread_t *t=hle_handle_obj(handle,HLE_H_THREAD);
     return t?__atomic_load_n(&t->done,__ATOMIC_ACQUIRE):-1;
 }
+/* The pseudo current-thread handle must become an independently closable
+ * real handle. The running thread and the handle table own separate refs. */
+static pthread_key_t current_thread_key;
+static pthread_once_t current_thread_once=PTHREAD_ONCE_INIT;
+static void current_thread_end(void *pointer){
+ thread_t *t=pointer;__atomic_store_n(&t->done,1,__ATOMIC_RELEASE);thread_release(t);
+}
+static void make_thread_key(void){if(pthread_key_create(&current_thread_key,current_thread_end))hle_fatal("current thread key allocation");}
+static thread_t *current_thread(void){
+ pthread_once(&current_thread_once,make_thread_key);thread_t *t=pthread_getspecific(current_thread_key);
+ if(!t){t=calloc(1,sizeof *t);if(!t)return NULL;t->id=hle_thread_id();t->refs=1;pthread_mutex_init(&t->lock,NULL);pthread_cond_init(&t->resume,NULL);if(pthread_setspecific(current_thread_key,t))hle_fatal("current thread state allocation");}
+ hle_wait_hook=thread_wait;hle_handle_set_closer(HLE_H_THREAD,thread_release);return t;
+}
+static uint32_t current_thread_handle(void){
+ thread_t *t=current_thread();if(!t)return 0;uint32_t h=hle_handle_find(HLE_H_THREAD,t);if(h)return hle_handle_duplicate(h);
+ pthread_mutex_lock(&t->lock);t->refs++;pthread_mutex_unlock(&t->lock);h=hle_handle_alloc(HLE_H_THREAD,t);if(!h)thread_release(t);return h;
+}
+static void k_DuplicateHandle(void){
+ uint32_t source=A32(1),target=A32(3),flags=A32(6),error=0,h=0;
+ /* This host has one guest process, without access-mask or inheritance
+  * tracking. Support SAME_ACCESS noninheritable duplicates in that process. */
+ if(A32(0)!=UINT32_MAX || (A32(2)!=UINT32_MAX && !(A32(2)==0&&(flags&1))))error=6;
+ else if((flags&~3u)||A32(5)||!(flags&2))error=ERROR_CALL_NOT_IMPLEMENTED;
+ else if(A32(2) && !gm_accessible(target,4,1))error=ERROR_INVALID_PARAMETER;
+ else if(!A32(2)){if(!hle_handle_type(source))error=6;}
+ else if(source==0xfffffffeu){h=current_thread_handle();if(!h)error=8;}
+ else if(source==UINT32_MAX)error=ERROR_CALL_NOT_IMPLEMENTED;
+ else {h=hle_handle_duplicate(source);if(!h)error=hle_handle_type(source)?8:6;}
+ if((flags&1)&&A32(0)==UINT32_MAX&&hle_handle_type(source))hle_handle_close(source);
+ if(error){hle_set_last_error(error);RET(0,7);}
+ if(A32(2))MEM32(target)=h;RET(1,7);
+}
 static void *thread_trampoline(void *p) {
     thread_t *t=p;
     hle_set_current_thread_id(t->id);
+    pthread_once(&current_thread_once,make_thread_key);
+    if(pthread_setspecific(current_thread_key,t))hle_fatal("guest thread state installation");
     pthread_mutex_lock(&t->lock);
     while (t->suspended) pthread_cond_wait(&t->resume,&t->lock);
     pthread_mutex_unlock(&t->lock);
     uint32_t args[]={t->param};
     t->result=hle_call_guest(t->start,1,args);
     hle_drop_thread_state();
-    __atomic_store_n(&t->done,1,__ATOMIC_RELEASE);
-    thread_release(t);
+    /* pthread-key destruction signals completion and releases thread ownership. */
     return NULL;
 }
 static void k_CreateThread(void) {             /* (sa, stack, start, param, flags, &tid) */
@@ -618,5 +651,6 @@ const win32hle_shim win32hle_kernel32_crt[] = {
     { "SetThreadPriority",            k_SetThreadPriority },
     { "GetThreadPriority",            k_GetThreadPriority },
     { "GetCurrentThread",             k_GetCurrentThread },
+    { "DuplicateHandle",              k_DuplicateHandle },
     { 0, 0 }
 };

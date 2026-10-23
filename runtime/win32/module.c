@@ -30,7 +30,7 @@ int (*hle_attach_translated_module)(const pe_image *);
 #define ERROR_PROC_NOT_FOUND      127u
 #define ERROR_RESOURCE_NOT_FOUND 1814u
 
-#define MAX_MODULES 32
+#define MAX_MODULES 256
 static struct {
     char     guest[260];          /* full guest path, C:\...\name.dll */
     char     base_name[64];       /* lower case, for matching */
@@ -42,7 +42,7 @@ static int g_main = -1;
 
 static const char *const g_system[] = {
     "kernel32", "user32", "gdi32", "advapi32", "shell32", "ole32", "oleaut32", "winmm",
-    "wsock32", "ws2_32", "ddraw", "dsound", "dinput", "version", "comctl32", "comdlg32",
+    "wsock32", "ws2_32", "ddraw", "dsound", "iphlpapi", "dinput", "version", "comctl32", "comdlg32",
     "ntdll", "msvcrt", "imm32", "mpr", "rpcrt4", "uuid", "dplayx", "d3dim",
     "wininet", "shlwapi", "mswsock", "opengl32",
 };
@@ -69,7 +69,7 @@ static int find_by_name(const char *name) {
 }
 
 int hle_module_add(const char *guest_path, uint32_t base, uint32_t rsrc_rva, uint32_t rsrc_size, int main_image) {
-    if (g_nmod >= MAX_MODULES) return -1;
+    if (g_nmod >= MAX_MODULES){fprintf(stderr,"[module] host module registry full (%d): %s\n",MAX_MODULES,guest_path);return -1;}
     int i = g_nmod++;
     snprintf(g_mod[i].guest, sizeof g_mod[i].guest, "%s", guest_path);
     base_of(guest_path, g_mod[i].base_name, sizeof g_mod[i].base_name);
@@ -123,6 +123,17 @@ static void k_GetModuleHandleA(void) {
     RET(s, 1);
 }
 
+static uint32_t module_wide_name(uint32_t p){
+ char name[2048];unsigned used=0;
+ for(unsigned i=0;i<512;i++){
+  if(!gm_accessible(p+i*2,2,0)){hle_set_last_error(87);return 0;}uint32_t c=MEM16(p+i*2);if(!c){name[used]=0;return gm_va(gm_strdup(name));}
+  if(c>=0xd800&&c<=0xdbff){i++;if(i>=512||!gm_accessible(p+i*2,2,0)){hle_set_last_error(1113);return 0;}uint32_t low=MEM16(p+i*2);if(low<0xdc00||low>0xdfff){hle_set_last_error(1113);return 0;}c=0x10000+((c-0xd800)<<10)+(low-0xdc00);}else if(c>=0xdc00&&c<=0xdfff){hle_set_last_error(1113);return 0;}
+  if(c<0x80)name[used++]=(char)c;else if(c<0x800){name[used++]=(char)(0xc0|(c>>6));name[used++]=(char)(0x80|(c&63));}else if(c<0x10000){name[used++]=(char)(0xe0|(c>>12));name[used++]=(char)(0x80|((c>>6)&63));name[used++]=(char)(0x80|(c&63));}else{name[used++]=(char)(0xf0|(c>>18));name[used++]=(char)(0x80|((c>>12)&63));name[used++]=(char)(0x80|((c>>6)&63));name[used++]=(char)(0x80|(c&63));}
+ }hle_set_last_error(206);return 0;
+}
+static void call_module_wide(const char *symbol){uint32_t original=A32(0),text=original?module_wide_name(original):0;if(original&&!text)RET(0,1);uint32_t result=hle_call_guest(hle_resolve(symbol),1,&text);if(text)gm_free(gm_ptr(text));RET(result,1);}
+static void k_GetModuleHandleW(void){call_module_wide("GetModuleHandleA");}
+static void k_LoadLibraryW(void){call_module_wide("LoadLibraryA");}
 static void k_GetModuleFileNameA(void) {                 /* (hModule, buf, size) */
     int i = find_mod(A32(0));
     char *buf = ASTR(1);
@@ -212,6 +223,16 @@ static uint32_t module_export(int i,uint32_t symbol) {
     }
     return base+result;
 }
+/* Winsock DLLs differ at ordinals 10..12. Keep their ABIs distinct while
+ * resolving each to its canonical named shim. */
+static const char *winsock_ordinal(const char *dll,uint32_t n){
+ static const char *low[]={NULL,"accept","bind","closesocket","connect","getpeername","getsockname","getsockopt","htonl","htons","ioctlsocket","inet_addr","inet_ntoa","listen","ntohl","ntohs","recv","recvfrom","select","send","sendto","setsockopt","shutdown","socket"};
+ if(!strcmp(dll,"wsock32.dll")){if(n==10)return "inet_addr";if(n==11)return "inet_ntoa";if(n==12)return "ioctlsocket";}
+ if(n<sizeof low/sizeof *low)return low[n];
+ switch(n){case 51:return "gethostbyaddr";case 52:return "gethostbyname";case 53:return "getprotobyname";case 54:return "getprotobynumber";case 55:return "getservbyname";case 56:return "getservbyport";case 57:return "gethostname";case 101:return "WSAAsyncSelect";case 108:return "WSACancelAsyncRequest";case 111:return "WSAGetLastError";case 112:return "WSASetLastError";case 115:return "WSAStartup";case 116:return "WSACleanup";case 151:return "__WSAFDIsSet";default:return NULL;}
+}
+/* Thread attach/detach notification suppression is not implemented. */
+static void k_DisableThreadLibraryCalls(void){hle_set_last_error(120);RET(0,1);}
 static void k_GetProcAddress(void) {                     /* (hModule, name or ordinal) */
     int i = find_mod(A32(0));
     uint32_t n = A32(1), va = 0;
@@ -219,7 +240,8 @@ static void k_GetProcAddress(void) {                     /* (hModule, name or or
         if (n < 0x10000u) {
             char nm[96];
             snprintf(nm, sizeof nm, "%s#%u", g_mod[i].base_name, n);
-            va = hle_resolve(nm);
+            const char *mapped=(!strcmp(g_mod[i].base_name,"wsock32.dll")||!strcmp(g_mod[i].base_name,"ws2_32.dll"))?winsock_ordinal(g_mod[i].base_name,n):NULL;
+            va=mapped?hle_resolve(mapped):hle_resolve(nm);
         } else {
             va = hle_resolve((const char *)gm_ptr(n));
         }
@@ -362,8 +384,11 @@ static void k_SetCurrentDirectoryA(void) {
 }
 
 const win32hle_shim win32hle_module[] = {
+    { "DisableThreadLibraryCalls", k_DisableThreadLibraryCalls },
+    { "GetModuleHandleW",   k_GetModuleHandleW },
     { "GetModuleHandleA",     k_GetModuleHandleA },
     { "GetModuleFileNameA",   k_GetModuleFileNameA },
+    { "LoadLibraryW",       k_LoadLibraryW },
     { "LoadLibraryA",         k_LoadLibraryA },
     { "FreeLibrary",          k_FreeLibrary },
     { "GetProcAddress",       k_GetProcAddress },

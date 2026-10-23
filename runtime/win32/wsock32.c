@@ -29,6 +29,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include "win32hle.h"
 
 #define SOCK_BASE 0x1000u
@@ -195,7 +196,7 @@ static void w_setsockopt(void) {                         /* (s, level, opt, val,
         g_wsa_error = 10042u;                            /* WSAENOPROTOOPT */
         RET(SOCKET_ERROR, 5);
     }
-    if (!host_opt(A32(1), A32(2), &hl, &ho)) RET(0, 5);  /* an option a host lacks: accepted */
+    if (!host_opt(A32(1), A32(2), &hl, &ho)){g_wsa_error=10042;RET(SOCKET_ERROR,5);}
     if (setsockopt(fd_of(A32(0)), hl, ho, &v, sizeof v) != 0) FAIL(5);
     RET(0, 5);
 }
@@ -215,7 +216,8 @@ static void w_getsockopt(void) {                         /* (s, level, opt, val,
         g_wsa_error = 10042u;
         RET(SOCKET_ERROR, 5);
     }
-    if (host_opt(A32(1), A32(2), &hl, &ho) && getsockopt(fd_of(A32(0)), hl, ho, &v, &l) != 0) FAIL(5);
+    if(!host_opt(A32(1), A32(2), &hl, &ho)){g_wsa_error=10042;RET(SOCKET_ERROR,5);}
+    if(getsockopt(fd_of(A32(0)), hl, ho, &v, &l)!=0)FAIL(5);
     if (A32(2) == 0x1008 && v == SOCK_DGRAM) v = 2;
     if (A32(3)) MEM32(A32(3)) = (uint32_t)v;
     if (A32(4)) MEM32(A32(4)) = 4;
@@ -286,6 +288,16 @@ static void w_gethostbyname(void) {
     RETP(he, 1);
 }
 
+static void w_shutdown(void){if(A32(1)>2){g_wsa_error=WSAEINVAL;RET(SOCKET_ERROR,2);}if(shutdown(fd_of(A32(0)),(int)A32(1)))FAIL(2);RET(0,2);}
+static void w_fd_isset(void){uint32_t set=A32(1);if(!gm_accessible(set,4,0)||MEM32(set)>64||!gm_accessible(set,4+MEM32(set)*4,0)){g_wsa_error=WSAEINVAL;RET(0,2);}for(unsigned i=0;i<MEM32(set);i++)if(MEM32(set+4+i*4)==A32(0))RET(1,2);RET(0,2);}
+static void w_select(void){
+ uint32_t ptr[3]={A32(1),A32(2),A32(3)},sockets[3][64],counts[3]={0};fd_set sets[3];int maximum=-1;
+ for(unsigned k=0;k<3;k++){FD_ZERO(&sets[k]);if(!ptr[k])continue;if(!gm_accessible(ptr[k],4,1)||MEM32(ptr[k])>64||!gm_accessible(ptr[k],4+MEM32(ptr[k])*4,1)){g_wsa_error=WSAEINVAL;RET(SOCKET_ERROR,5);}counts[k]=MEM32(ptr[k]);for(unsigned j=0;j<counts[k];j++){sockets[k][j]=MEM32(ptr[k]+4+j*4);int fd=fd_of(sockets[k][j]);if(fd<0||fd>=FD_SETSIZE){g_wsa_error=WSAENOTSOCK;RET(SOCKET_ERROR,5);}FD_SET(fd,&sets[k]);if(fd>maximum)maximum=fd;}}
+ if(maximum<0){g_wsa_error=WSAEINVAL;RET(SOCKET_ERROR,5);}struct timeval timeout,*tp=NULL;
+ if(A32(4)){uint32_t p=A32(4);if(!gm_accessible(p,8,0)||(int32_t)MEM32(p)<0||(int32_t)MEM32(p+4)<0||MEM32(p+4)>=1000000){g_wsa_error=WSAEINVAL;RET(SOCKET_ERROR,5);}timeout.tv_sec=MEM32(p);timeout.tv_usec=MEM32(p+4);tp=&timeout;}
+ hle_block_begin();int result=select(maximum+1,ptr[0]?&sets[0]:NULL,ptr[1]?&sets[1]:NULL,ptr[2]?&sets[2]:NULL,tp),error=errno;hle_block_end();if(result<0){g_wsa_error=wsa_errno(error);RET(SOCKET_ERROR,5);}
+ for(unsigned k=0;k<3;k++)if(ptr[k]){unsigned n=0;for(unsigned j=0;j<counts[k];j++)if(FD_ISSET(fd_of(sockets[k][j]),&sets[k]))MEM32(ptr[k]+4+4*n++)=sockets[k][j];MEM32(ptr[k])=n;}RET((uint32_t)result,5);
+}
 /* ---- WSAAsyncSelect ---- */
 #define MAX_ASYNC 32
 static struct { uint32_t s, hwnd, msg, events; } g_async[MAX_ASYNC];
@@ -349,6 +361,9 @@ const win32hle_shim win32hle_wsock32[] = {
     SHIM2(15, "ntohs", w_ntohs),
     SHIM2(16, "recv", w_recv),
     SHIM2(17, "recvfrom", w_recvfrom),
+    SHIM2(18, "select", w_select),
+    SHIM2(22, "shutdown", w_shutdown),
+    SHIM2(151, "__WSAFDIsSet", w_fd_isset),
     SHIM2(19, "send", w_send),
     SHIM2(20, "sendto", w_sendto),
     SHIM2(21, "setsockopt", w_setsockopt),
@@ -363,3 +378,31 @@ const win32hle_shim win32hle_wsock32[] = {
     SHIM2(116, "WSACleanup", w_WSACleanup),
     { 0, 0 }
 };
+
+/* Loopback-only transport check, including both DLLs' ordinal ABI. */
+#define N_CHECK(c) do{if(!(c)){fprintf(stderr,"[network-probe] failed line %d: %s\n",__LINE__,#c);return 15;}}while(0)
+static uint32_t ncall(const char *symbol,unsigned count,uint32_t *args){return hle_call_guest(hle_resolve(symbol),(int)count,args);}
+int cs16_probe_network(void){
+ uint32_t mods[2],arg;
+ for(unsigned i=0;i<2;i++){arg=gm_va(gm_strdup(i?"ws2_32.dll":"wsock32.dll"));mods[i]=ncall("LoadLibraryA",1,&arg);N_CHECK(mods[i]);}
+ static const struct {uint32_t ordinal;const char *name;} lookups[]={{7,"getsockopt"},{10,"ioctlsocket"},{11,"inet_addr"},{12,"inet_ntoa"},{18,"select"},{22,"shutdown"},{23,"socket"},{151,"__WSAFDIsSet"}};
+ for(unsigned m=0;m<2;m++)for(unsigned i=0;i<sizeof lookups/sizeof *lookups;i++){uint32_t number=lookups[i].ordinal;if(!m&&number>=10&&number<=12)number=number==10?12:number-1;uint32_t q[]={mods[m],number};uint32_t ordinal=ncall("GetProcAddress",2,q);q[1]=gm_va(gm_strdup(lookups[i].name));N_CHECK(ordinal&&ordinal==ncall("GetProcAddress",2,q));}
+ uint32_t make[]={2,2,17};uint32_t send_socket=ncall("socket",3,make),receive_socket=ncall("socket",3,make);N_CHECK(send_socket!=INVALID_SOCKET&&receive_socket!=INVALID_SOCKET);
+ uint32_t addr=gm_va(gm_calloc(1,16));MEM16(addr)=2;MEM8(addr+4)=127;MEM8(addr+7)=1;uint32_t bind_args[]={receive_socket,addr,16};N_CHECK(!ncall("bind",3,bind_args));uint32_t size=gm_va(gm_calloc(1,4));MEM32(size)=16;uint32_t get[]={receive_socket,addr,size};N_CHECK(!ncall("getsockname",3,get)&&MEM16(addr+2));
+ /* Invoke the resolved stdcall entry directly: hle_call_guest restores ESP,
+  * which alone would hide an incorrect ordinal's argument cleanup. */
+ uint32_t ioctl_value=gm_va(gm_calloc(1,4));MEM32(ioctl_value)=1;
+ for(unsigned m=0;m<2;m++){
+  uint32_t q[]={mods[m],m?10:12},target=ncall("GetProcAddress",2,q);
+  uint32_t saved_esp=g_esp,saved_eax=g_eax;
+  PUSH32(g_esp,ioctl_value);PUSH32(g_esp,0x8004667e);PUSH32(g_esp,receive_socket);PUSH32(g_esp,RECOMP_RETADDR);
+  recomp_func_t fn=recomp_lookup_import(target);N_CHECK(fn);fn();
+  N_CHECK(g_esp==saved_esp&&g_eax==0&&(fcntl(fd_of(receive_socket),F_GETFL)&O_NONBLOCK));g_eax=saved_eax;
+ }
+ uint32_t payload=gm_va(gm_strdup("CS16!"));uint32_t send_args[]={send_socket,payload,6,0,addr,16};N_CHECK(ncall("sendto",6,send_args)==6);
+ uint32_t fdset=gm_va(gm_calloc(1,12)),timeout=gm_va(gm_calloc(1,8));MEM32(fdset)=1;MEM32(fdset+4)=receive_socket;MEM32(fdset+8)=0xcafebabe;MEM32(timeout)=1;uint32_t poll_args[]={0,fdset,0,0,timeout};N_CHECK(ncall("select",5,poll_args)==1&&MEM32(fdset)==1&&MEM32(fdset+4)==receive_socket&&MEM32(fdset+8)==0xcafebabe&&MEM32(timeout)==1);
+ uint32_t contains[]={receive_socket,fdset};N_CHECK(ncall("__WSAFDIsSet",2,contains));uint32_t bytes=gm_va(gm_calloc(1,20));MEM32(bytes)=MEM32(bytes+16)=0xcafebabe;uint32_t read_args[]={receive_socket,bytes+4,12,0,0,0};N_CHECK(ncall("recvfrom",6,read_args)==6&&!memcmp(gm_ptr(bytes+4),"CS16!",6)&&MEM32(bytes)==0xcafebabe&&MEM32(bytes+16)==0xcafebabe);
+ MEM32(fdset)=1;MEM32(timeout)=0;N_CHECK(!ncall("select",5,poll_args)&&!MEM32(fdset));
+ uint32_t option=gm_va(gm_calloc(1,4));uint32_t opt_args[]={receive_socket,0xffff,0xdead,option,4};N_CHECK(ncall("setsockopt",5,opt_args)==SOCKET_ERROR&&ncall("WSAGetLastError",0,NULL)==10042);
+ N_CHECK(!ncall("closesocket",1,&send_socket)&&!ncall("closesocket",1,&receive_socket));printf("{\"networkProbe\":true,\"loopbackOnly\":true,\"bothDllOrdinalAliases\":true,\"nameOrdinalIdentity\":true,\"stdcallStackCleanup\":true,\"udpPayloadRoundtrip\":true,\"windowsFdSetLayout\":true,\"timeoutPreserved\":true,\"unsupportedOptionRejected\":true,\"bufferBounds\":true}\n");return 0;
+}

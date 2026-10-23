@@ -1,5 +1,6 @@
 /* Runs translated original launcher code. Missing interfaces stop explicitly. */
 #include <signal.h>
+#include <execinfo.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +11,11 @@
 static void fault(int sig,siginfo_t *info,void *context){
  (void)context;
  fprintf(stderr,"[cs16-boot] signal=%d address=%p guest=%08x import=%s esp=%08x\n",sig,info?info->si_addr:NULL,g_cur_func,g_cur_import?g_cur_import:"none",g_esp);
+ if(getenv("CS16_CALLBACK_TRACE")){
+  void *frames[32];int count=backtrace(frames,32);backtrace_symbols_fd(frames,count,2);
+  fprintf(stderr,"[guest-fault] eax=%08x ecx=%08x edx=%08x ebp=%08x\n",g_eax,g_ecx,g_edx,g_ebp);
+  if(gm_accessible(g_esp,64,0)){fprintf(stderr,"[guest-fault] stack:");for(unsigned i=0;i<16;i++)fprintf(stderr," %08x",MEM32(g_esp+i*4));fputc('\n',stderr);}
+ }
  _exit(128+sig);
 }
 static void timeout(int sig){(void)sig;fprintf(stderr,"[cs16-boot] watchdog guest=%08x import=%s\n",g_cur_func,g_cur_import?g_cur_import:"none");_exit(124);}
@@ -22,6 +28,9 @@ extern int cs16_probe_ui(void);
 extern int cs16_probe_x87(void);
 extern int cs16_probe_exceptions(void);
 extern int cs16_probe_browser(void);
+extern int cs16_probe_kernel(void);
+extern int cs16_probe_audio(void);
+extern int cs16_probe_network(void);
 extern void cs16_opengl_register(void);
 extern void cs16_webbrowser_install(void);
 extern const win32hle_shim win32hle_crypto_random[];
@@ -83,6 +92,7 @@ int main(int argc,char **argv){
  win32hle_register(win32hle_kernel32_ext);win32hle_register(win32hle_module);
  win32hle_register(win32hle_winmm);win32hle_register(win32hle_wsock32);win32hle_register(win32hle_advapi32);
  win32hle_register(win32hle_user32);
+ win32hle_register(win32hle_dsound);
  win32hle_register(win32hle_gdi32);win32hle_register(win32hle_gdidc);
  win32hle_register(win32hle_ole32);win32hle_register(win32hle_ddraw);
  win32hle_register(win32hle_path_extra);
@@ -104,6 +114,9 @@ int main(int argc,char **argv){
  if(argc==3 && !strcmp(argv[2],"--probe-version"))return probe_version();
  if(argc==3 && !strcmp(argv[2],"--probe-ui"))return cs16_probe_ui();
  if(argc==3 && !strcmp(argv[2],"--probe-x87"))return cs16_probe_x87();
+ if(argc==3 && !strcmp(argv[2],"--probe-network"))return cs16_probe_network();
+ if(argc==3 && !strcmp(argv[2],"--probe-audio"))return cs16_probe_audio();
+ if(argc==3 && !strcmp(argv[2],"--probe-kernel"))return cs16_probe_kernel();
  if(argc==3 && !strcmp(argv[2],"--probe-browser"))return cs16_probe_browser();
  if(argc==3 && !strcmp(argv[2],"--probe-exception"))return cs16_probe_exceptions();
  fprintf(stderr,"[cs16-boot] original launcher CRT entry=%08x target=ARM64\n",image.entry);

@@ -56,6 +56,7 @@ Lifter.lift_instruction=lift_with_x87_environment
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--entry',action='append',type=lambda v:int(v,0),default=[],help='Additional original executable entry observed at runtime; input hash remains checked')
     ap.add_argument('module',type=Path);ap.add_argument('--output',type=Path,required=True)
     ap.add_argument('--image-base',type=lambda value:int(value,0),help='Apply PE HIGHLOW relocations before lifting; original file is preserved')
     args=ap.parse_args();out=args.output.resolve()
@@ -86,6 +87,8 @@ def main():
         assert all(code_start<=a<code_end for a in seeds),'Unrecognized BLOB code layout'
         sections=[Section('blob'+str(i),s['address']-base,s['memoryBytes'],s['address']-base,s['fileBytes'],0x60000020 if i==0 else 0x40000040) for i,s in enumerate(meta['sections'])]
         iat={i['iatAddress']:(i['dll'],i['name']) for i in meta['imports']}
+    if any(not code_start<=entry<code_end for entry in args.entry):raise ValueError('Additional entry outside original code section')
+    seeds.update(args.entry)
     # MSVC takes addresses of import jump thunks as callbacks/vtable slots.
     # Validate the complete FF 25 absolute operand against the real IAT;
     # ordinary prologue discovery can miss these six-byte function bodies.
@@ -168,7 +171,7 @@ def main():
     (out/'recomp_funcs.h').write_text('\n'.join(header)+'\n')
     table='#include "recomp_funcs.h"\nconst recomp_dispatch_entry_t recomp_dispatch_table[] = {\n'+''.join(f'{{0x{a:08X},sub_{a:08X}}},\n' for a in sorted(done))+'};\nconst uint32_t recomp_dispatch_count = '+str(len(done))+';\n'
     (out/'recomp_dispatch.c').write_text(table)
-    report={'inputSha256':digest,'format':kind,'imageBase':base,'codeStart':code_start,'codeEnd':code_end,'verifiedImportThunkSeeds':len(import_thunks),'generatedFunctions':len(done),'files':chunk_index,
+    report={'inputSha256':digest,'format':kind,'imageBase':base,'codeStart':code_start,'codeEnd':code_end,'requestedEntries':list(map(hex,args.entry)),'verifiedImportThunkSeeds':len(import_thunks),'generatedFunctions':len(done),'files':chunk_index,
             'generationErrors':errors,'unimplementedInstructions':unsupported,'uncleanExtents':dirty,'exceptionLandingPads':exception_owners,
             'elapsedSeconds':round(time.monotonic()-started,2),'compiled':False,'gameLaunched':False,
             'scope':'Static module translation experiment; discovery is heuristic and callbacks, imports, relocations, execution and behavior remain unverified.'}

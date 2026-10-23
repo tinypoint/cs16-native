@@ -1463,6 +1463,9 @@ static void u_CreateWindowExA(void) {
                           A32(8), A32(9), A32(10), A32(11)), 12);
 }
 static void u_DestroyWindow(void) { int ok = W(A32(0)) != NULL; destroy(A32(0)); RET((uint32_t)ok, 1); }
+/* Windows global input preferences have no implemented host equivalent. */
+static void u_SystemParametersInfoA(void){hle_set_last_error(120);RET(0,4);}
+static void u_GetWindowThreadProcessId(void){win_t *x=W(A32(0));if(!x){hle_set_last_error(1400);RET(0,2);}if(A32(1)){if(!gm_accessible(A32(1),4,1)){hle_set_last_error(87);RET(0,2);}MEM32(A32(1))=(uint32_t)getpid();}RET(x->thread,2);}
 static void u_IsWindow(void) { RET(W(A32(0)) != NULL, 1); }
 static void u_IsWindowVisible(void) { win_t *x = W(A32(0)); RET(x && visible(x), 1); }
 static void u_IsWindowEnabled(void) { win_t *x = W(A32(0)); RET(x && !(x->style & WS_DISABLED), 1); }
@@ -2218,6 +2221,8 @@ const win32hle_shim win32hle_user32[] = {
     { "GetActiveWindow", u_GetActiveWindow }, { "GetForegroundWindow", u_GetForegroundWindow },
     { "SetActiveWindow", u_SetActiveWindow }, { "SetForegroundWindow", u_SetForegroundWindow },
     { "BringWindowToTop", u_BringWindowToTop }, { "EnableWindow", u_EnableWindow },
+    { "SystemParametersInfoA", u_SystemParametersInfoA },
+    { "GetWindowThreadProcessId", u_GetWindowThreadProcessId },
     { "IsWindowEnabled", u_IsWindowEnabled }, { "IsWindowVisible", u_IsWindowVisible }, { "IsWindow", u_IsWindow },
     { "SetWindowPos", u_SetWindowPos }, { "MoveWindow", u_MoveWindow },
     { "BeginDeferWindowPos", u_BeginDeferWindowPos }, { "DeferWindowPos", u_DeferWindowPos },

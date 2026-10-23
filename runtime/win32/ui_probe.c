@@ -1,6 +1,7 @@
 /* Targeted integration checks for guest ABI, shared pixels and native HWNDs. */
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include "win32hle.h"
 #include "cs16_dispatch.h"
 extern unsigned cs16_native_window_count(void);
@@ -29,6 +30,8 @@ int cs16_probe_ui(void){
  args[0]=wc;uint32_t atom=call("RegisterClassA",1,args);CHECK(atom);
  memset(args,0,sizeof args);args[1]=cls;args[2]=cls;args[6]=320;args[7]=240;args[10]=0x1400000;
  uint32_t hwnd=call("CreateWindowExA",12,args);CHECK(hwnd && cs16_native_window_count()==1);
+ uint32_t owner_out=gm_va(gm_calloc(1,12));MEM32(owner_out)=MEM32(owner_out+8)=0xcafebabe;
+ args[0]=hwnd;args[1]=owner_out+4;CHECK(call("GetWindowThreadProcessId",2,args)==hle_thread_id());CHECK(MEM32(owner_out+4)==(uint32_t)getpid()&&MEM32(owner_out)==0xcafebabe&&MEM32(owner_out+8)==0xcafebabe);args[0]=0xdeadbeef;CHECK(!call("GetWindowThreadProcessId",2,args));
  args[0]=hwnd;uint32_t window_dc=call("GetDC",1,args);CHECK(window_dc);
  args[0]=window_dc;args[1]=0;CHECK(call("ChoosePixelFormat",2,args)==1);
  uint32_t context=call("wglCreateContext",1,args);CHECK(context);
