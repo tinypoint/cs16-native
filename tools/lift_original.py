@@ -26,13 +26,22 @@ from lift32 import Lifter
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('module',type=Path);ap.add_argument('--output',type=Path,required=True)
+    ap.add_argument('--image-base',type=lambda value:int(value,0),help='Apply PE HIGHLOW relocations before lifting; original file is preserved')
     args=ap.parse_args();out=args.output.resolve()
     if not out.is_relative_to(ROOT/'.local'):
         ap.error('Generated code must remain in this project .local directory.')
     out.mkdir(parents=True,exist_ok=True);raw=args.module.read_bytes();digest=hashlib.sha256(raw).hexdigest()
     started=time.monotonic()
+    analysis_path=args.module
     if raw[:2]==b'MZ':
-        info=analyze_pe(str(args.module));pe=pefile.PE(data=raw);image=bytes(pe.get_memory_mapped_image());pe.close()
+        if args.image_base is not None:
+            relocated=pefile.PE(data=raw)
+            if not getattr(relocated,'DIRECTORY_ENTRY_BASERELOC',[]):
+                raise ValueError('Cannot relocate a module without relocation records')
+            relocated.relocate_image(args.image_base)
+            analysis_path=out/'relocated-input.dll'
+            analysis_path.write_bytes(relocated.write());relocated.close()
+        info=analyze_pe(str(analysis_path));pe=pefile.PE(str(analysis_path));image=bytes(pe.get_memory_mapped_image());pe.close()
         base=info.image_base;code_start=info.code_start;code_end=info.code_end
         sections=[Section(s.name,s.virtual_address,s.virtual_size,s.virtual_address,min(max(s.virtual_size,s.raw_size),len(image)-s.virtual_address),s.characteristics) for s in info.sections]
         iat=build_iat_map(info);seeds={base+info.entry_point_rva}|{base+e.rva for e in info.exports if e.rva and code_start<=base+e.rva<code_end}
@@ -47,12 +56,13 @@ def main():
         sections=[Section('blob'+str(i),s['address']-base,s['memoryBytes'],s['address']-base,s['fileBytes'],0x60000020 if i==0 else 0x40000040) for i,s in enumerate(meta['sections'])]
         iat={i['iatAddress']:(i['dll'],i['name']) for i in meta['imports']}
     cache=out/'catalog.json';meta_path=out/'catalog-source.json'
-    if cache.exists() and meta_path.exists() and json.loads(meta_path.read_text())['sha256']==digest:
+    cache_key={'sha256':digest,'imageBase':base}
+    if cache.exists() and meta_path.exists() and all(json.loads(meta_path.read_text()).get(k)==v for k,v in cache_key.items()):
         starts={a for a in json.loads(cache.read_text()) if code_start<=a<code_end}
     else:
         funcs=Disassembler(image,base,sections).find_functions(code_start,code_end,iat,seeds=seeds,release_operands=True)
         starts={a for a in set(funcs)|seeds if code_start<=a<code_end}
-        cache.write_text(json.dumps(sorted(starts)));meta_path.write_text(json.dumps({'sha256':digest,'kind':kind,'discoveryIsHeuristic':True}))
+        cache.write_text(json.dumps(sorted(starts)));meta_path.write_text(json.dumps({**cache_key,'kind':kind,'discoveryIsHeuristic':True}))
         del funcs
     md=Cs(CS_ARCH_X86,CS_MODE_32);md.detail=True
     lifter=Lifter(iat_map=iat,lifted=starts)
@@ -87,7 +97,7 @@ def main():
     (out/'recomp_funcs.h').write_text('\n'.join(header)+'\n')
     table='#include "recomp_funcs.h"\nconst recomp_dispatch_entry_t recomp_dispatch_table[] = {\n'+''.join(f'{{0x{a:08X},sub_{a:08X}}},\n' for a in sorted(done))+'};\nconst uint32_t recomp_dispatch_count = '+str(len(done))+';\n'
     (out/'recomp_dispatch.c').write_text(table)
-    report={'inputSha256':digest,'format':kind,'generatedFunctions':len(done),'files':chunk_index,
+    report={'inputSha256':digest,'format':kind,'imageBase':base,'codeStart':code_start,'codeEnd':code_end,'generatedFunctions':len(done),'files':chunk_index,
             'generationErrors':errors,'unimplementedInstructions':unsupported,'uncleanExtents':dirty,
             'elapsedSeconds':round(time.monotonic()-started,2),'compiled':False,'gameLaunched':False,
             'scope':'Static module translation experiment; discovery is heuristic and callbacks, imports, relocations, execution and behavior remain unverified.'}

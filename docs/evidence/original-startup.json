@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "date": "2026-10-23",
+  "target": "macOS ARM64 diagnostic host",
+  "startup": {
+    "exitCode": 134,
+    "inputModulesVerified": {
+      "hl.exe": "aebc2327f2fb8c26340377b717eee79194d411e1ca6e4239c5c9c629dd6447c9",
+      "FileSystem_Stdio.dll": "e8e9c75a3b7a3d7d7b6b41e44f32c2841e8e40dd97b522707f9dc727eb86a13d",
+      "vgui.dll": "0d4472d21443de839080860a300cca6b9436508f329d33d712e5c9bc07d4d998",
+      "Steam.dll": "cd7a2cc4bd64f6b96adb01b4b6a936311ed52e7fb1514aab19a14652be95387f",
+      "Mss32.dll": "fe62f1eb6ba407df77619d16927abbefad3c726014f6bd1f8c37a7c3d6b781cc",
+      "dbg.dll": "8564b2f4c76aac5eb645514bd8fb82a1f57009557c506c0fcef3ce5b2ee078cf",
+      "hw.dll": "525bdbddf2f180824944ee2576702e040c2f5554ca4290f40faec842e2cf02bb"
+    },
+    "originalLauncherEntryReached": true,
+    "originalDllMainEntries": [
+      "40008432",
+      "20103dfe",
+      "40123bd8",
+      "21134697",
+      "40201adc"
+    ],
+    "originalDllMainSuccesses": 5,
+    "originalFactoryResolved": true,
+    "engineFileOpened": true,
+    "stopDiagnostics": [
+      "[win32hle] FATAL: Unresolved original control transfer: target=00000000 from=01d01f90",
+      "[cs16-boot] signal=6 address=0x185de1650 guest=01d01f90 import=LeaveCriticalSection esp=10403bcc"
+    ],
+    "gamePlayable": false
+  },
+  "filesystemProbe": {
+    "originalFilesystemProbe": true,
+    "module": 1073741824,
+    "factory": 1073763696,
+    "object": 1073852496,
+    "vtable": 1073828504,
+    "validInterface": true,
+    "invalidInterfaceRejected": true,
+    "missingExportRejected": true,
+    "ordinalLookup": true,
+    "gameLaunched": false
+  },
+  "versionProbe": {
+    "versionProbe": true,
+    "fileVersionMS": 131072,
+    "fileVersionLS": 0,
+    "fileVersionText": "2.0.0.0",
+    "missingQueryRejected": true,
+    "missingFileRejected": true
+  },
+  "versionMatchesIndependentParser": true,
+  "blockingImport": {
+    "module": "USER32.dll",
+    "name": "LoadCursorA",
+    "iatAddress": "0x01e86390",
+    "callingFunction": "0x01d01f90"
+  },
+  "limitations": [
+    "No rendered game frame",
+    "Full game not playable",
+    "Complete Win32 and C++/SEH handling not implemented",
+    "Wasm host not built or validated",
+    "Original input authenticity not certified"
+  ],
+  "logSha256": {
+    "launcher-run.log": "7757d4207ea18950bafa6a2d6fbdc4a38fdd606099a953f1f17f264b470fe32a",
+    "filesystem-probe.log": "9797e6589e1a7d7176afe18ec30e88055aacd6b5e577e78b96537c646a334e5f",
+    "version-probe.log": "6f3ed69dfc2e1a12c66034cde0bcb210ee3fda7ff870e475ae0b49fed4f7f6b6"
+  },
+  "translationDiagnostics": {
+    "hl": {
+      "generatedFunctions": 478,
+      "generationErrors": 0,
+      "unimplementedInstructions": 0,
+      "uncleanExtents": 0
+    },
+    "filesystem": {
+      "generatedFunctions": 839,
+      "generationErrors": 0,
+      "unimplementedInstructions": 0,
+      "uncleanExtents": 0
+    },
+    "vgui": {
+      "generatedFunctions": 1796,
+      "generationErrors": 0,
+      "unimplementedInstructions": 0,
+      "uncleanExtents": 0
+    },
+    "steam": {
+      "generatedFunctions": 32886,
+      "generationErrors": 0,
+      "unimplementedInstructions": 20,
+      "uncleanExtents": 19
+    },
+    "mss32": {
+      "generatedFunctions": 1764,
+      "generationErrors": 0,
+      "unimplementedInstructions": 19,
+      "uncleanExtents": 8
+    },
+    "dbg": {
+      "generatedFunctions": 439,
+      "generationErrors": 0,
+      "unimplementedInstructions": 0,
+      "uncleanExtents": 0
+    },
+    "hw": {
+      "generatedFunctions": 14913,
+      "generationErrors": 0,
+      "unimplementedInstructions": 30,
+      "uncleanExtents": 6
+    }
+  }
+}

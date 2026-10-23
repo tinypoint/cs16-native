@@ -1,0 +1,74 @@
+{
+  "sourceRepository": "https://github.com/tinypoint/ra2-native",
+  "sourceCommit": "aa7a5867843aa6e9d6d01e07ac83d5389f3ba463",
+  "files": [
+    {
+      "path": "runtime/win32/host_lite.c",
+      "sourceSha256": "0056815ff9de10b4e5d71aa456d8803265e0860f6b4de3ba87684c992fabd360"
+    },
+    {
+      "path": "runtime/win32/kernel32.c",
+      "sourceSha256": "b23a4ff41623f2e9e1ad8e0bbac54718a919b4a4a3efd50d82caaa86c906c8f4"
+    },
+    {
+      "path": "runtime/win32/kernel32_crt.c",
+      "sourceSha256": "1673aa4bb52574a0275e80bfa49d64992bd8e526a1dc3da39d20e24f053e84be"
+    },
+    {
+      "path": "runtime/win32/kernel32_ext.c",
+      "sourceSha256": "8e83a0063d90956e0c1f399e9c208cdf049cb29fd96d5aea1312a83b82f84951"
+    },
+    {
+      "path": "runtime/win32/hle_path.c",
+      "sourceSha256": "1ab1e3ee0b7f64a07b53c1d781767f43153d2ffe0f579a8219799e80814bb043"
+    },
+    {
+      "path": "runtime/win32/module.c",
+      "sourceSha256": "e84eff65b114ece5b4dd57cfd85709091fec1d97afe014a7208f3e2dc2d5da3c"
+    },
+    {
+      "path": "runtime/win32/winmm.c",
+      "sourceSha256": "1820819be5d04b0a814c7c607fce6f7d7922899bbac278a96c61ba52509b6fb7"
+    },
+    {
+      "path": "runtime/win32/wsock32.c",
+      "sourceSha256": "84173a27e25d91e9cf2de3ad25317c9e12af453d2c1d13b085adb652d25a57ff"
+    },
+    {
+      "path": "runtime/win32/advapi32.c",
+      "sourceSha256": "bbab0116863a39f0fdd0d3d99c5134d740616c993663465913fcead13a8cf44f"
+    },
+    {
+      "path": "runtime/win32/pe_loader.c",
+      "sourceSha256": "751cefbecc6972fbdea2d495267a24620f5439b2c680aaaea762f60da7a2d58a"
+    },
+    {
+      "path": "runtime/win32/pe_loader.h",
+      "sourceSha256": "63be48620966ddb9102b9e77f1ba3e8844dc16b164b9da15552edd5e10cc375b"
+    },
+    {
+      "path": "runtime/win32/pe_format.h",
+      "sourceSha256": "81b7a434e2c107ccaea6e1befd6b957f63a997672de2007e44ca034b494963eb"
+    },
+    {
+      "path": "runtime/win32/win32hle.h",
+      "sourceSha256": "99c0df6852942542f7b2f1d3d3409265fd2b4fbc52ac9fbdde3eac72b6c89d91"
+    },
+    {
+      "path": "runtime/win32/LICENSE",
+      "sourceSha256": "531e3081e3f5420e64ee32ab9b58b208213bda4c2b9338e1ac13692d37167c60"
+    },
+    {
+      "path": "runtime/guest/guest_memory.c",
+      "sourceSha256": "1d17050be3a476cbe2558fb7584c723cf6d887e6ea643e087a65dfd747669975"
+    },
+    {
+      "path": "runtime/guest/guest_memory.h",
+      "sourceSha256": "4d5d3ae24bf7bb76d17e5b6ea73c3634c2893aa86dfcde9532f7e04f2b5a00ac"
+    },
+    {
+      "path": "runtime/guest/guest_cpu.h",
+      "sourceSha256": "b702a82686f4568a93d3461cce0fecd545d5a00ee78e8e48c00ab65dcc1fa3fa"
+    }
+  ]
+}

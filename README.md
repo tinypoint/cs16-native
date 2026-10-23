@@ -8,7 +8,7 @@
 
 已接收并解开 `CounterStrike1.6.zip`，完成原程序清单、哈希和 PE／旧 GoldSrc BLOB 格式审计。已将上传的 `mp.dll` 中 3 个原程序函数转换为 C，再编译到 ARM64 与 Wasm，64 组受控对照用例与 Unicorn x86 参考一致。
 
-这仅证明第一批隔离函数的转换路径，**还没有启动完整 CS 1.6，也没有可玩的 Mac 或 Web 入口**。引擎级动态库加载、接口、回调和实际对局仍需开发与验证。详见 [进度与证据](docs/STATUS.md)、[原程序迁移路线](docs/PORT_PLAN.md)。
+原始 hl.exe 的 CRT 启动代码现已在 ARM64 诊断宿主中执行；原文件系统、Steam、VGUI 和 Miles DLL 已通过各自原始 DllMain 初始化。文件系统工厂及版本资源读取也通过了独立检查。**还没有启动完整 CS 1.6，也没有可玩的 Mac 或 Web 入口**。引擎图形接口、回调和实际对局仍需开发与验证。详见 [进度与证据](docs/STATUS.md)、[原程序迁移路线](docs/PORT_PLAN.md)。
 
 ## 仓库与手机访问
 
@@ -26,6 +26,8 @@
 | `tools/read_goldsrc_blob.py` | 将旧引擎／客户端 BLOB 解码为分析用内存映像，不改原文件、不伪造 PE 导出表 |
 | `tools/probe_original_functions.py` | 原程序函数在 ARM64、Wasm 与 x86 参考之间的对照 |
 | `tools/lift_original.py` | PE／BLOB 模块的候选函数发现与 C 转换实验；显式记录缺失指令与边界问题 |
+| `runtime/` | 独立的 ARM64 诊断宿主、访客内存、原 DLL 加载与部分 Win32 接口 |
+| `tools/build_launcher.py` / `tools/run_launcher.py` | 编译并运行原始启动流程；在独立副本上执行，记录明确停止原因 |
 | `tools/inspect_assets.py` | 只读检查资源目录 |
 | `tools/upload_server.py` | 用户请求的局域网资源接收服务，不运行上传程序 |
 | `repos.lock.json` | 转换工具版本与格式研究来源 |
@@ -50,3 +52,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 不提供 `--emsdk` 时只检查 ARM64；同时提供它才检查两个目标。实验固定了当前上传 DLL 的哈希和导出地址，其他版本须先审计，不应直接更改地址绕过检查。Wasm 实验在 Node 中执行，尚非浏览器兼容性验证。
 
 后续保持手机反复刷新时复用资源缓存、程序与资源分开更新等需求；它们将在实际原程序运行路径建立后接入，不以展示页面代替可玩游戏。
+
+## 原启动流程诊断
+
+详见 [诊断宿主说明](docs/LAUNCHER.md)。这是开发工具，不是已完成的 Mac 应用；当前只支持原生 ARM64。完整宿主尚未编译到 Web，首批函数的 Wasm 验证仍是独立实验。
