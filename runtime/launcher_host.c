@@ -20,6 +20,7 @@ extern void cs16_original_modules_install(void);
 extern void cs16_native_window_install(void);
 extern int cs16_probe_ui(void);
 extern int cs16_probe_x87(void);
+extern int cs16_probe_exceptions(void);
 extern void cs16_opengl_register(void);
 extern const win32hle_shim win32hle_crypto_random[];
 static void messagebox(void){
@@ -100,6 +101,7 @@ int main(int argc,char **argv){
  if(argc==3 && !strcmp(argv[2],"--probe-version"))return probe_version();
  if(argc==3 && !strcmp(argv[2],"--probe-ui"))return cs16_probe_ui();
  if(argc==3 && !strcmp(argv[2],"--probe-x87"))return cs16_probe_x87();
+ if(argc==3 && !strcmp(argv[2],"--probe-exception"))return cs16_probe_exceptions();
  fprintf(stderr,"[cs16-boot] original launcher CRT entry=%08x target=ARM64\n",image.entry);
  uint32_t result=hle_call_guest(image.entry,0,NULL);
  fprintf(stderr,"[cs16-boot] original launcher returned %08x\n",result);

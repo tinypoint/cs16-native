@@ -90,5 +90,16 @@
       "path": "runtime/win32/ddraw.c",
       "sourceSha256": "58f9e9213f19be0f84f576751e48d3193a5a67b44c976f74f74a3caad8659340"
     }
+  ],
+  "additionalAdaptations": [
+    {
+      "sourceRepository": "https://github.com/sp00nznet/pcrecomp",
+      "sourceCommit": "bd26806fbd4714d670d2dee75973c5eaff64674c",
+      "sourceFile": "runtime/native32/eh32.c",
+      "sourceSha256": "1ff0abb1a131e11449c6e27cf2bcde28098b5e9fb38d2e14cd0465663a449697",
+      "destination": "runtime/guest/exception.c",
+      "license": "MIT; runtime/guest/LICENSE",
+      "scope": "Original MSVC x86 metadata dispatch adapted for heap landing pads, bounded guest memory and host callback boundary guards; not complete C++/SEH conformance."
+    }
   ]
 }

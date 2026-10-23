@@ -17,7 +17,8 @@ def main():
     probes.add_argument('--probe-filesystem',action='store_true')
     probes.add_argument('--probe-version',action='store_true')
     probes.add_argument('--probe-ui',action='store_true')
-    probes.add_argument('--probe-x87',action='store_true');args=ap.parse_args()
+    probes.add_argument('--probe-x87',action='store_true')
+    probes.add_argument('--probe-exception',action='store_true');args=ap.parse_args()
     source=ROOT/'game/upload-531009895/CounterStrike1.6';stage=ROOT/'.local/run/game'
     if not stage.exists():
         stage.parent.mkdir(parents=True,exist_ok=True)
@@ -35,7 +36,7 @@ def main():
         if digest!=expected:raise RuntimeError('Staged module differs from translated input: '+name)
         hashes[name]=digest
     binary=ROOT/'.local/launcher-native/cs16-original-launcher'
-    probe=next((name for name in ('filesystem','version','ui','x87') if getattr(args,'probe_'+name)),None)
+    probe=next((name for name in ('filesystem','version','ui','x87','exception') if getattr(args,'probe_'+name)),None)
     mode=probe+'-probe' if probe else 'launcher-run'
     log=ROOT/'logs'/(mode+'.log')
     command=[str(binary),'hl.exe']+(['--probe-'+probe] if probe else [])
@@ -51,6 +52,8 @@ def main():
             'stopDiagnostics':faults[-4:],'gamePlayable':False,
             'nativeWindows':re.findall(r'\[native-window\] created (.*)',text),
             'presentedDirectDrawSurface':'first DirectDraw presentation' in text}
+    record['originalExceptionCatches']=re.findall(r'\[guest-eh\] handling (.*)',text)
+    record['originalExceptionContinuations']=re.findall(r'\[guest-eh\] resume=(.*)',text)
     record['createdOpenGLContext']='native context created' in text
     record['presentedOpenGLBuffer']='first guest buffer swap' in text
     if args.probe_filesystem:
@@ -66,7 +69,7 @@ def main():
         actual=record['versionProbe']
         assert (actual['fileVersionMS'],actual['fileVersionLS'],actual['fileVersionText'])==(fixed.FileVersionMS,fixed.FileVersionLS,expected_text)
         record['versionMatchesIndependentParser']=True;pe.close()
-    if args.probe_ui or args.probe_x87:
+    if args.probe_ui or args.probe_x87 or args.probe_exception:
         key=probe+'Probe'
         lines=[line for line in text.splitlines() if line.startswith('{"'+key+'"')]
         if p.returncode or not lines:raise RuntimeError('Probe failed; see '+str(log))
@@ -74,6 +77,9 @@ def main():
         if args.probe_x87:
             from check_x87_reference import verify
             record['x86Reference']=verify(record[key])
+        if args.probe_exception:
+            from exception_metadata import verify_fixtures
+            record['exceptionMetadataFixtures']=verify_fixtures()
     output=ROOT/'logs'/(probe+'-probe-result.json' if probe else 'original-startup-result.json')
     output.write_text(json.dumps(record,indent=2)+'\n');print(json.dumps(record,indent=2))
     return p.returncode if p.returncode>=0 else 128-p.returncode

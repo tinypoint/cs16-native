@@ -120,6 +120,13 @@ static void o_CoCreateInstance(void) {                   /* (clsid, outer, ctx, 
         }
     if (clsid) hle_guid_string(clsid, s);
     fprintf(stderr, "[ole32] CoCreateInstance(%s): no such class on this host\n", clsid ? s : "(null)");
+    /* The original HTML panel assumes this Windows component exists and
+     * dereferences the output without checking HRESULT. Stop at the missing
+     * host service, rather than letting the guest dereference zero. This does
+     * not create a browser or report successful COM activation. */
+    static const uint8_t web_browser[16]={0x61,0xf9,0x56,0x88,0x0a,0x34,0xd0,0x11,0xa9,0x6b,0x00,0xc0,0x4f,0xd7,0x05,0xa2};
+    if(clsid && !memcmp(clsid,web_browser,16))
+        hle_fatal("WebBrowser COM host adapter unavailable; original HTML panel initialization cannot continue (guest %08x)",g_cur_func);
     RET(REGDB_E_CLASSNOTREG, 5);
 }
 static void o_OleInitialize(void)   { RET(S_OK, 1); }

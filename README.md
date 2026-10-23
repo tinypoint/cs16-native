@@ -8,7 +8,7 @@
 
 已接收并解开 `CounterStrike1.6.zip`，完成原程序清单、哈希和 PE／旧 GoldSrc BLOB 格式审计。已将上传的 `mp.dll` 中 3 个原程序函数转换为 C，再编译到 ARM64 与 Wasm，64 组受控对照用例与 Unicorn x86 参考一致。
 
-原始 hl.exe 已在 ARM64 诊断宿主中执行；原引擎创建了 Valve001 窗口和实际 OpenGL 上下文，原客户端已开始执行，ParticleMan 和 GameUI 的原 DLL 入口返回成功。窗口／字体／GPU 检查，以及原浮点环境函数的 5 组 x86 对照通过。**尚未得到 CS 游戏画面，也没有可玩的 Mac 或 Web 入口**。目前停在原 Steam 文件接口抛出的 C++ 异常，需要继续核对初始化流程和异常处理。详见 [进度与证据](docs/STATUS.md)、[窗口与图形阶段](docs/NATIVE_DISPLAY.md)。
+原始 hl.exe 已在 ARM64 诊断宿主中执行；原引擎创建了 Valve001 窗口和实际 OpenGL 上下文，原客户端已开始执行，ParticleMan 和 GameUI 的原 DLL 入口返回成功。窗口／字体／GPU 检查，以及原浮点环境函数的 5 组 x86 对照通过。**尚未得到 CS 游戏画面，也没有可玩的 Mac 或 Web 入口**。原 Steam 异常现已交给原捕获函数处理，启动继续进入 VGUI2 和菜单资源加载；目前停在尚未实现的 Windows WebBrowser 控件接口。详见 [进度与证据](docs/STATUS.md)、[窗口与图形阶段](docs/NATIVE_DISPLAY.md)、[异常处理阶段](docs/NATIVE_EXCEPTION.md)。
 
 ## 仓库与手机访问
 

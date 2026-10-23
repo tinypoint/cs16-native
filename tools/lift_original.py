@@ -22,6 +22,10 @@ from disasm32 import Disassembler
 from pe_analyze import Section, analyze_pe, build_iat_map
 from generate import true_extent, linear_disassemble_function, lift_function_linear, write_chunk, EXTENT_REACH
 from lift32 import Lifter
+from eh32 import resume_points,funcinfo,catch_funclets
+import eh32 as _eh_metadata
+from exception_metadata import funclet_returns
+_eh_metadata.funclet_returns=funclet_returns
 from capstone.x86 import X86_OP_MEM
 
 # Extend the pinned converter locally; upstream sources remain unchanged.
@@ -104,8 +108,11 @@ def main():
         cache.write_text(json.dumps(sorted(starts)));meta_path.write_text(json.dumps({**cache_key,'kind':kind,'discoveryIsHeuristic':True}))
         del funcs
     md=Cs(CS_ARCH_X86,CS_MODE_32);md.detail=True
+    def read(va,size):
+        offset=va-base
+        return bytes(image[offset:offset+size]) if 0<=offset<=len(image) and 0<=size<=len(image)-offset else None
     lifter=Lifter(iat_map=iat,lifted=starts)
-    todo=sorted(starts);done=set();chunk=[];chunk_index=0;errors=[];dirty=[];unsupported=[]
+    todo=sorted(starts);done=set();chunk=[];chunk_index=0;errors=[];dirty=[];unsupported=[];exception_owners=[]
     while todo:
         outside=set()
         for addr in todo:
@@ -117,7 +124,32 @@ def main():
                 if not reached:raise ValueError('No reachable instructions')
                 ins,leaders=linear_disassemble_function(md,image,base,min(reached),end,reached=reached);leaders.add(addr)
                 if not ins:raise ValueError('No decoded instructions')
-                body=lift_function_linear(lifter,name,ins,leaders,addr)
+                eh=resume_points(md,read,ins)
+                if eh:
+                    for resume in eh:
+                        if not code_start<=resume<code_end:raise ValueError('EH continuation outside code')
+                        if resume not in reached:
+                            more,ok=true_extent(md,image,base,resume,min(resume+EXTENT_REACH,code_end),starts,reached=reached,behind=behind,called=called)
+                            end=max(end,more)
+                    ins,leaders=linear_disassemble_function(md,image,base,min(reached),end,reached=reached);leaders.add(addr)
+                    exception_owners.append({'function':hex(addr),'resume':list(map(hex,sorted(eh)))})
+                # Include the original catch / cleanup funclets, even when
+                # their addresses occur only in exception metadata.
+                for instruction in ins[:12]:
+                    if instruction.mnemonic=='push' and instruction.op_str.startswith('0x'):
+                        fi=funcinfo(read,int(instruction.op_str,16))
+                        if fi:
+                            outside.update(catch_funclets(read,fi))
+                            maximum=int.from_bytes(read(fi+4,4),'little');unwind_map=int.from_bytes(read(fi+8,4),'little')
+                            if maximum>4096:raise ValueError('EH unwind map too large')
+                            for state in range(maximum):
+                                action=read(unwind_map+state*8+4,4)
+                                if not action:raise ValueError('EH unwind map unreadable')
+                                target=int.from_bytes(action,'little')
+                                if target:outside.add(target)
+                outside|={t for t in behind if t not in reached}|called
+                body=lift_function_linear(lifter,name,ins,leaders,addr,eh_resume=eh)
+                if eh:body=body.replace('RECOMP_ITAIL(','RECOMP_EH_ITAIL(')
                 missing=[line.strip() for line in body.splitlines() if 'UNIMPLEMENTED:' in line]
                 if missing:
                     unsupported.append({'function':hex(addr),'instructions':missing})
@@ -137,7 +169,7 @@ def main():
     table='#include "recomp_funcs.h"\nconst recomp_dispatch_entry_t recomp_dispatch_table[] = {\n'+''.join(f'{{0x{a:08X},sub_{a:08X}}},\n' for a in sorted(done))+'};\nconst uint32_t recomp_dispatch_count = '+str(len(done))+';\n'
     (out/'recomp_dispatch.c').write_text(table)
     report={'inputSha256':digest,'format':kind,'imageBase':base,'codeStart':code_start,'codeEnd':code_end,'verifiedImportThunkSeeds':len(import_thunks),'generatedFunctions':len(done),'files':chunk_index,
-            'generationErrors':errors,'unimplementedInstructions':unsupported,'uncleanExtents':dirty,
+            'generationErrors':errors,'unimplementedInstructions':unsupported,'uncleanExtents':dirty,'exceptionLandingPads':exception_owners,
             'elapsedSeconds':round(time.monotonic()-started,2),'compiled':False,'gameLaunched':False,
             'scope':'Static module translation experiment; discovery is heuristic and callbacks, imports, relocations, execution and behavior remain unverified.'}
     (out/'result.json').write_text(json.dumps(report,indent=2)+'\n')

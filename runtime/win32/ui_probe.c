@@ -7,6 +7,18 @@ extern unsigned cs16_native_window_count(void);
 extern int hle_gdi_dib_view(uint32_t,uint8_t **,int *,int *,int *,int *);
 static uint32_t call(const char *name,int count,const uint32_t *args){return hle_call_guest(hle_resolve(name),count,args);}
 #define CHECK(condition) do{if(!(condition)){fprintf(stderr,"[ui-probe] failed at line %d: %s\n",__LINE__,#condition);return 10;}}while(0)
+static unsigned enum_calls;
+static int enum_invalid;
+static void enum_probe_callback(void){
+ uint32_t elf=A32(0),metrics=A32(1);
+ enum_calls++;
+ if(!gm_accessible(elf,188,0) || !gm_accessible(metrics,96,0) ||
+    strcmp(gm_ptr(elf+28),"Arial") || (int32_t)MEM32(metrics)<=0 ||
+    MEM8(metrics+44)!=32 || MEM8(metrics+45)!=255 ||
+    MEM8(metrics+46)!='?' || A32(2)!=4 || A32(3)!=0x12345678)enum_invalid=1;
+ RET(0,4); /* Enum must stop when the callback returns zero. */
+}
+static const win32hle_shim enum_probe_methods[]={{"UI.EnumProbe",enum_probe_callback},{0,0}};
 int cs16_probe_ui(void){
  uint32_t args[14]={0},cursor;
  args[1]=32512;cursor=call("LoadCursorA",2,args);CHECK(cursor);
@@ -45,6 +57,26 @@ int cs16_probe_ui(void){
  uint32_t abc=gm_va(gm_calloc(1,20));MEM32(abc)=MEM32(abc+16)=0xcafebabe;
  args[0]=dc;args[1]=args[2]='A';args[3]=abc+4;CHECK(call("GetCharABCWidthsA",4,args));
  CHECK(MEM32(abc)==0xcafebabe && MEM32(abc+16)==0xcafebabe && (int32_t)(MEM32(abc+4)+MEM32(abc+8)+MEM32(abc+12))>0);
+ uint32_t ansi_abc[3];memcpy(ansi_abc,gm_ptr(abc+4),12);
+ CHECK(call("GetCharABCWidthsW",4,args));CHECK(!memcmp(ansi_abc,gm_ptr(abc+4),12));
+ args[1]=0x03a9;args[2]=0x03a9;CHECK(call("GetCharABCWidthsW",4,args));
+ CHECK(MEM32(abc)==0xcafebabe && MEM32(abc+16)==0xcafebabe);
+ args[1]=0x10000;args[2]=0x10000;CHECK(!call("GetCharABCWidthsW",4,args));
+ uint32_t metrics=gm_va(gm_calloc(1,64));MEM32(metrics)=MEM32(metrics+60)=0xcafebabe;
+ args[0]=dc;args[1]=metrics+4;CHECK(call("GetTextMetricsA",2,args));
+ CHECK(MEM32(metrics)==0xcafebabe && MEM32(metrics+60)==0xcafebabe);
+ CHECK(MEM8(metrics+4+44)==32 && MEM8(metrics+4+45)==255 && MEM8(metrics+4+46)=='?' && MEM8(metrics+4+47)==32);
+ uint32_t lf=gm_va(gm_calloc(1,60));strcpy(gm_ptr(lf+28),"Arial");
+ win32hle_register(enum_probe_methods);args[0]=dc;args[1]=lf;args[2]=hle_resolve("UI.EnumProbe");args[3]=0x12345678;args[4]=0;
+ CHECK(!call("EnumFontFamiliesExA",5,args));CHECK(enum_calls==1 && !enum_invalid);
+ strcpy(gm_ptr(lf+28),"NoSuchFont-CS16-Probe");CHECK(call("EnumFontFamiliesExA",5,args)==1);CHECK(enum_calls==1);
+ args[0]=dc;args[1]=1;CHECK(call("SetMapMode",2,args)==1);args[1]=8;CHECK(!call("SetMapMode",2,args));
+ uint32_t points=gm_va(gm_calloc(1,24));MEM32(points)=MEM32(points+20)=0xcafebabe;
+ MEM32(points+4)=(uint32_t)-23;MEM32(points+8)=41;MEM32(points+12)=17;MEM32(points+16)=(uint32_t)-5;
+ uint32_t point_copy[4];memcpy(point_copy,gm_ptr(points+4),16);
+ args[0]=dc;args[1]=points+4;args[2]=2;CHECK(call("LPtoDP",3,args));CHECK(call("DPtoLP",3,args));
+ CHECK(!memcmp(point_copy,gm_ptr(points+4),16) && MEM32(points)==0xcafebabe && MEM32(points+20)==0xcafebabe);
+ args[2]=0x20000000;CHECK(!call("LPtoDP",3,args));
  unsigned changed[2]={0};
  for(int bottom=0;bottom<2;bottom++){
   uint32_t bmi=gm_va(gm_calloc(1,40)),pointer=gm_va(gm_calloc(1,4));MEM32(bmi)=40;MEM32(bmi+4)=64;MEM32(bmi+8)=bottom?32:(uint32_t)-32;MEM16(bmi+12)=1;MEM16(bmi+14)=32;
@@ -65,7 +97,7 @@ int cs16_probe_ui(void){
  uint32_t provider=MEM32(provider_out),random=gm_va(gm_calloc(1,72));MEM32(random)=MEM32(random+68)=0xcafebabe;
  args[0]=provider;args[1]=64;args[2]=random+4;CHECK(call("CryptGenRandom",3,args));CHECK(MEM32(random)==0xcafebabe && MEM32(random+68)==0xcafebabe);
  args[0]=provider;args[1]=0;CHECK(call("CryptReleaseContext",2,args));CHECK(!call("CryptReleaseContext",2,args));
- printf("{\"uiProbe\":true,\"nativeWindowLifecycle\":true,\"classLifecycle\":true,\"openGLTriangleReadback\":true,\"openGLDoubleArguments\":true,\"randomProviderLifecycleAndBounds\":true,\"distinctSystemCursors\":true,\"abcBounds\":true,\"sharedDibPixels\":true,\"topDownInkPixels\":%u,\"bottomUpInkPixels\":%u}\n",changed[0],changed[1]);return 0;
+ printf("{\"uiProbe\":true,\"nativeWindowLifecycle\":true,\"classLifecycle\":true,\"openGLTriangleReadback\":true,\"openGLDoubleArguments\":true,\"randomProviderLifecycleAndBounds\":true,\"distinctSystemCursors\":true,\"abcBounds\":true,\"unicodeAbcBounds\":true,\"textMetricLayout\":true,\"fontEnumerationCallback\":true,\"mmTextCoordinateRoundtrip\":true,\"sharedDibPixels\":true,\"topDownInkPixels\":%u,\"bottomUpInkPixels\":%u}\n",changed[0],changed[1]);return 0;
 }
 int cs16_probe_x87(void){
  static const uint16_t controls[]={0x27f,0x37f,0xb7f,0xf7f,0x240};

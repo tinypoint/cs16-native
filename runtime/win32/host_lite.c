@@ -21,6 +21,8 @@
 #include <pthread.h>
 #include <sched.h>
 #include "win32hle.h"
+static _Thread_local unsigned guest_call_scope;
+unsigned cs16_guest_call_scope(void){return guest_call_scope;}
 
 /* ------------------------------------------------------------ register file
  * recomp_types.h declares these extern; exactly one translation unit defines
@@ -294,7 +296,9 @@ uint32_t hle_call_guest(uint32_t va, int nargs, const uint32_t *args) {
     regs_t saved; regs_save(&saved);
     for (int i = nargs - 1; i >= 0; i--) PUSH32(g_esp, args[i]);
     PUSH32(g_esp, RECOMP_RETADDR);
+    guest_call_scope++;
     f();
+    guest_call_scope--;
     uint32_t eax = g_eax;
     regs_load(&saved);
     mach_leave();

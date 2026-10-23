@@ -21,6 +21,7 @@
 #include <pthread.h>
 #include <execinfo.h>
 #include "win32hle.h"
+#include "exception.h"
 
 #define ERROR_INSUFFICIENT_BUFFER  122u
 #define ERROR_CALL_NOT_IMPLEMENTED 120u
@@ -497,7 +498,36 @@ static void exception_string(uint32_t va) {
         fputc(c>=32 && c<127 ? c : '.',stderr);
     }
 }
+static void exception_frames(void){
+    if(!gm_accessible(g_fs_base,4,0))return;
+    uint32_t record=MEM32(g_fs_base),seen[64];unsigned depth=0;
+    while(record && record!=UINT32_MAX && depth<64 && gm_accessible(record,12,0)){
+        for(unsigned i=0;i<depth;i++)if(seen[i]==record)return;seen[depth++]=record;
+        uint32_t handler=MEM32(record+4),info=0;
+        if(gm_accessible(handler,11,0) && MEM8(handler)==0xb8){
+            uint32_t candidate=MEM32(handler+1);
+            if((MEM8(handler+5)==0xe9 || (MEM8(handler+5)==0xff && MEM8(handler+6)==0x25)) && gm_accessible(candidate,20,0) && MEM32(candidate)>=0x19930520 && MEM32(candidate)<=0x19930522)info=candidate;
+        }
+        fprintf(stderr,"[guest-eh] record=%08x handler=%08x state=%d funcinfo=%08x\n",record,handler,(int32_t)MEM32(record+8),info);
+        if(info){
+            uint32_t count=MEM32(info+12),table=MEM32(info+16);
+            if(count<=64 && gm_accessible(table,count*20,0))for(unsigned i=0;i<count;i++){
+                uint32_t block=table+i*20,handlers=MEM32(block+16),n=MEM32(block+12);
+                fprintf(stderr,"[guest-eh] try=%d..%d catch-state=%d handlers=%u\n",(int32_t)MEM32(block),(int32_t)MEM32(block+4),(int32_t)MEM32(block+8),n);
+                if(n<=64 && gm_accessible(handlers,n*16,0))for(unsigned j=0;j<n;j++){
+                    uint32_t h=handlers+j*16,type=MEM32(h+4);
+                    fprintf(stderr,"[guest-eh] catch=%08x type=",MEM32(h+12));
+                    if(type && type<UINT32_MAX-8)exception_string(type+8);else fputs("...",stderr);fputc('\n',stderr);
+                }
+            }
+        }
+        record=MEM32(record);
+    }
+}
 static void k_RaiseException(void) {
+    if(A32(0)==0xE06D7363 && A32(2)==3 && gm_accessible(A32(3),12,0) && MEM32(A32(3))==0x19930520)
+        cs16_eh_dispatch(MEM32(A32(3)+4),MEM32(A32(3)+8));
+    exception_frames();
     void *frames[24];int frame_count=backtrace(frames,24);
     backtrace_symbols_fd(frames,frame_count,2);
     fprintf(stderr, "[win32hle] RaiseException(0x%08X) from guest 0x%08X: guest exceptions are not handled\n",

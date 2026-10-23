@@ -43,6 +43,6 @@
 
 ## 当前停止原因
 
-VGUI 调用原 SteamOpenFile 后，原 Steam.dll 抛出 `Grid::CLibraryNotInitializedException`。当前宿主记录类型和调用链后停止，尚不能执行原程序的 C++／SEH 展开与捕获。还未确认该异常在正常启动中会被捕获并走回退路径，还是初始化次序／接口存在问题；不能由它认定输入资源缺失或需要登录账号。日志还记录到异常模块名加载请求，需要继续追踪。
+本文件对应的历史证据记录了原 SteamOpenFile 的异常停止点。后续已接通受限 C++ 捕获路径，原捕获函数执行后继续进入 VGUI2 和菜单资源加载；最新停止点为未实现的 Windows WebBrowser 控件。详见 [异常处理阶段](NATIVE_EXCEPTION.md) 和 [最新证据](evidence/exception-startup.json)。
 
-本阶段没有取得原游戏缓冲区交换或游戏画面，没有修改异常检查、吞掉异常、替换 Steam 文件接口或设置“初始化成功”标志。机器可读结果见 [native-display-startup.json](evidence/native-display-startup.json)。
+本阶段仍未取得原游戏缓冲区交换或游戏画面。历史结果保留在 [native-display-startup.json](evidence/native-display-startup.json)，用于区分阶段进展。

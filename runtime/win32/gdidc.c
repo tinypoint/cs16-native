@@ -105,19 +105,21 @@ static void g_CreateFontA(void) {                        /* (h, w, esc, orient, 
         }
     RET(SYSTEM_FONT, 14);
 }
-static void g_GetCharABCWidthsA(void) {
+static void char_abc(int wide) {
  dc_t *d=DC(A32(0));uint32_t first=A32(1),last=A32(2),out=A32(3);
- if(!d || first>last || last>255 || !gm_accessible(out,(last-first+1)*12,1)){hle_set_last_error(87);RET(0,4);}
+ if(!d || first>last || last>(wide?65535u:255u) || !gm_accessible(out,(last-first+1)*12,1)){hle_set_last_error(87);RET(0,4);}
  TTF_Font *font=ttf_of(FONT(d->font));if(!font)RET(0,4);
  static const uint16_t cp1252[32]={0x20ac,0x81,0x201a,0x192,0x201e,0x2026,0x2020,0x2021,0x2c6,0x2030,0x160,0x2039,0x152,0x8d,0x17d,0x8f,0x90,0x2018,0x2019,0x201c,0x201d,0x2022,0x2013,0x2014,0x2dc,0x2122,0x161,0x203a,0x153,0x9d,0x17e,0x178};
  for(uint32_t c=first;c<=last;c++){
-  uint16_t code=c>=128 && c<160?cp1252[c-128]:(uint16_t)c;
+  uint16_t code=!wide && c>=128 && c<160?cp1252[c-128]:(uint16_t)c;
   int left,right,bottom,top,advance;
   if(TTF_GlyphMetrics(font,code,&left,&right,&bottom,&top,&advance))RET(0,4);
   uint32_t at=out+(c-first)*12;MEM32(at)=(uint32_t)left;MEM32(at+4)=(uint32_t)(right-left);MEM32(at+8)=(uint32_t)(advance-right);
  }
  RET(1,4);
 }
+static void g_GetCharABCWidthsA(void){char_abc(0);}
+static void g_GetCharABCWidthsW(void){char_abc(1);}
 static void g_CreateFontIndirectA(void) {                /* LOGFONTA: height, width, esc, orient, weight, italic(byte)..., face at +28 */
     uint32_t lf = A32(0);
     for (int i = 0; i < MAX_FONTS; i++)
@@ -129,6 +131,27 @@ static void g_CreateFontIndirectA(void) {                /* LOGFONTA: height, wi
             RET(FONT_BASE + (uint32_t)i, 1);
         }
     RET(SYSTEM_FONT, 1);
+}
+static void g_EnumFontFamiliesExA(void){
+ uint32_t lf=A32(1),callback=A32(2),parameter=A32(3);
+ if(!DC(A32(0)) || !gm_accessible(lf,60,0) || !callback || A32(4)){hle_set_last_error(87);RET(0,5);}
+ char requested[33];memcpy(requested,gm_ptr(lf+28),32);requested[32]=0;
+ static const char *families[]={"Arial","Tahoma","Verdana","MS Sans Serif","MS Shell Dlg","Trebuchet MS","Courier New","Times New Roman","Marlett","System"};
+ uint32_t elf=gm_va(gm_calloc(1,188)),metrics=gm_va(gm_calloc(1,96)),result=1;unsigned found=0;
+ for(unsigned i=0;i<sizeof families/sizeof *families;i++){
+  if(*requested && strcasecmp(requested,families[i]))continue;
+  font_t temporary={0};temporary.height=-16;temporary.weight=400;snprintf(temporary.face,sizeof temporary.face,"%s",families[i]);
+  TTF_Font *font=ttf_of(&temporary);if(!font)continue;
+  memset(gm_ptr(elf),0,188);memcpy(gm_ptr(elf),gm_ptr(lf),60);MEM32(elf)=(uint32_t)-16;MEM32(elf+16)=400;
+  snprintf(gm_ptr(elf+28),32,"%s",families[i]);snprintf(gm_ptr(elf+60),64,"%s",families[i]);snprintf(gm_ptr(elf+124),32,"Regular");snprintf(gm_ptr(elf+156),32,"Western");
+  memset(gm_ptr(metrics),0,96);int asc=TTF_FontAscent(font),desc=-TTF_FontDescent(font),average,height,width;
+  TTF_SizeText(font,"x",&average,&height);TTF_SizeText(font,"W",&width,&height);
+  MEM32(metrics)=(uint32_t)(asc+desc);MEM32(metrics+4)=(uint32_t)asc;MEM32(metrics+8)=(uint32_t)desc;MEM32(metrics+20)=(uint32_t)average;MEM32(metrics+24)=(uint32_t)width;MEM32(metrics+28)=400;
+  MEM8(metrics+44)=32;MEM8(metrics+45)=255;MEM8(metrics+46)='?';MEM8(metrics+47)=32;MEM8(metrics+51)=0x26;MEM8(metrics+52)=MEM8(elf+23);
+  uint32_t args[]={elf,metrics,4,parameter};found++;result=hle_call_guest(callback,4,args);TTF_CloseFont(font);
+  if(!result)break;
+ }
+ gm_free(gm_ptr(elf));gm_free(gm_ptr(metrics));RET(found?result:1,5);
 }
 
 /* ---- GDI objects: brushes, pens, bitmaps ----
@@ -303,6 +326,14 @@ static void g_CreateBitmap(void) {                       /* (w, h, planes, bpp, 
 /* ---- DCs ---- */
 uint32_t cs16_dc_window(uint32_t dc){dc_t *d=DC(dc);return d?d->hwnd:0;}
 static void g_GetDC(void) {uint32_t h=new_dc();dc_t *d=DC(h);if(d)d->hwnd=A32(0);RET(h,1);}
+static void g_SetMapMode(void){if(!DC(A32(0)) || A32(1)!=1){hle_set_last_error(87);RET(0,2);}RET(1,2);}
+static void transform_points(int inverse){
+ dc_t *d=DC(A32(0));uint32_t p=A32(1),count=A32(2);
+ if(!d || count>UINT32_MAX/8 || !gm_accessible(p,count*8,1)){hle_set_last_error(87);RET(0,3);}
+ for(uint32_t i=0;i<count;i++){MEM32(p+i*8)+=(uint32_t)(inverse?d->wox-d->vox:d->vox-d->wox);MEM32(p+i*8+4)+=(uint32_t)(inverse?d->woy-d->voy:d->voy-d->woy);}RET(1,3);
+}
+static void g_LPtoDP(void){transform_points(0);}
+static void g_DPtoLP(void){transform_points(1);}
 static void g_ReleaseDC(void) { hle_gdi_release_dc(A32(1)); RET(1, 2); }
 static void g_SaveDC(void)    { dc_t *d = DC(A32(0)); if (d) g_saved[d - g_dc] = *d; RET(d ? 1u : 0u, 1); }
 static void g_RestoreDC(void) { dc_t *d = DC(A32(0)); if (d && g_saved[d - g_dc].used) *d = g_saved[d - g_dc]; RET(d ? 1u : 0u, 2); }
@@ -328,12 +359,6 @@ static void g_SetWindowOrgEx(void) {
     if (A32(3)) MEM32(A32(3)) = d ? (uint32_t)d->wox : 0, MEM32(A32(3) + 4) = d ? (uint32_t)d->woy : 0;
     if (d) d->wox = (int)A32(1), d->woy = (int)A32(2);
     RET(1, 4);
-}
-static void g_DPtoLP(void) {                             /* (hdc, pts, n) */
-    dc_t *d = DC(A32(0));
-    for (uint32_t i = 0; d && i < A32(2); i++)
-        MEM32(A32(1) + 8 * i) += (uint32_t)(d->wox - d->vox), MEM32(A32(1) + 8 * i + 4) += (uint32_t)(d->woy - d->voy);
-    RET(1, 3);
 }
 static void g_SetGraphicsMode(void) { RET(1u, 2); }
 static void g_ModifyWorldTransform(void) { RET(1, 3); }
@@ -365,8 +390,8 @@ static void g_GetTextMetricsA(void) {                    /* TEXTMETRICA */
     if (t) { int w; TTF_SizeText(t, "x", &ave, &w); TTF_SizeText(t, "W", &max, &w); }
     MEM32(m) = (uint32_t)(asc + desc), MEM32(m + 4) = (uint32_t)asc, MEM32(m + 8) = (uint32_t)desc;
     MEM32(m + 20) = (uint32_t)ave, MEM32(m + 24) = (uint32_t)max, MEM32(m + 28) = 400;
-    MEM8(m + 45) = 0x20, MEM8(m + 46) = 0xFF, MEM8(m + 47) = 0x1F, MEM8(m + 48) = 0x20;
-    MEM8(m + 51) = 0x26;                                 /* TMPF_VARIABLE_PITCH | VECTOR | TRUETYPE */
+    MEM8(m + 44) = 0x20, MEM8(m + 45) = 0xFF, MEM8(m + 46) = '?', MEM8(m + 47) = 0x20;
+    MEM8(m + 51) = (uint8_t)(0x26 | (t && TTF_FontFaceIsFixedWidth(t)?0:1));
     RET(1, 2);
 }
 
@@ -520,6 +545,9 @@ static void g_CreateCompatibleDC(void) { RET(new_dc(), 1); }   /* a memory DC; a
 static void g_DeleteDC(void) { hle_gdi_release_dc(A32(0)); RET(1, 1); }
 
 const win32hle_shim win32hle_gdidc[] = {
+    { "EnumFontFamiliesExA", g_EnumFontFamiliesExA },
+    { "GetCharABCWidthsW", g_GetCharABCWidthsW },
+    { "SetMapMode", g_SetMapMode },{ "LPtoDP", g_LPtoDP },{ "DPtoLP", g_DPtoLP },
     { "GetCharABCWidthsA", g_GetCharABCWidthsA },
     { "CreateSolidBrush", g_CreateSolidBrush }, { "CreateHatchBrush", g_CreateHatchBrush },
     { "CreateBrushIndirect", g_CreateBrushIndirect }, { "CreatePen", g_CreatePen }, { "CreatePenIndirect", g_CreatePenIndirect },
@@ -540,7 +568,7 @@ const win32hle_shim win32hle_gdidc[] = {
     { "SetTextColor", g_SetTextColor }, { "SetBkColor", g_SetBkColor }, { "SetBkMode", g_SetBkMode },
     { "SetTextAlign", g_SetTextAlign }, { "GetTextColor", g_GetTextColor }, { "GetBkColor", g_GetBkColor },
     { "GetBkMode", g_GetBkMode }, { "SetViewportOrgEx", g_SetViewportOrgEx }, { "SetWindowOrgEx", g_SetWindowOrgEx },
-    { "DPtoLP", g_DPtoLP }, { "SetGraphicsMode", g_SetGraphicsMode }, { "ModifyWorldTransform", g_ModifyWorldTransform },
+    { "SetGraphicsMode", g_SetGraphicsMode }, { "ModifyWorldTransform", g_ModifyWorldTransform },
     { "GetTextExtentPoint32A", g_GetTextExtentPoint32A }, { "GetTextExtentPointA", g_GetTextExtentPoint32A },
     { "GetTextMetricsA", g_GetTextMetricsA }, { "TextOutA", g_TextOutA },
     { 0, 0 }

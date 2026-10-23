@@ -1,12 +1,25 @@
 #ifndef CS16_DISPATCH_H
 #define CS16_DISPATCH_H
 #include "recomp_types.h"
+#include "exception.h"
 recomp_func_t cs16_transfer_target(uint32_t va);
 void cs16_x87_store_env(uint32_t address);
 int cs16_x87_load_env(uint32_t address);
 void cs16_x87_note(uint32_t ip,uint32_t opcode,uint32_t data,int has_data,int compare,int compared);
 void cs16_x87_init(void);
 void cs16_x87_clear(void);
+#undef RECOMP_EH_ENTER
+#define RECOMP_EH_ENTER() \
+ cs16_eh_frame *const _ehf=cs16_eh_enter(g_esp,g_cur_func); \
+ if(setjmp(_ehf->jump)){RECOMP_REGS_IN();_flag_k=FK_NONE;_itail_tgt=_ehf->resume;goto _ljump;}
+#undef RECOMP_EH_LEAVE
+#define RECOMP_EH_LEAVE() cs16_eh_leave(_ehf)
+/* A live landing pad must retain its C activation across a split body. */
+#define RECOMP_EH_ITAIL(target_va) do { \
+ uint32_t _tail_va=(uint32_t)(target_va);RECOMP_FLAGS_OUT();RECOMP_REGS_OUT(); \
+ if(_tail_va!=RECOMP_RETADDR){recomp_func_t _tail_fn=cs16_transfer_target(_tail_va);_tail_fn();} \
+ RECOMP_EH_LEAVE();return; \
+} while(0)
 
 /* A guest JMP must not accumulate native C frames. All lifted/shim targets
    have the same void(void) ABI, so Clang musttail preserves guest state while
