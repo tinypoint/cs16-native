@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "version": "0.0.2",
+  "mode": "original-wasm-first-frame-only",
+  "engine": "Original uploaded hl.exe and original DLLs",
+  "display": "Original CS background and CD Key entry dialog; original key check retained",
+  "interaction": false,
+  "firstFrameAfterColoredBuffers": 30,
+  "wasmDecodedBytes": 52117586,
+  "compressedProgram": {
+    "url": "/artifact/02ac5753b42e3d31f089a6d737aa7a5a524456a9a4e3285f28342096410fc9c3/cs16-web.wasm.gz",
+    "bytes": 11193250,
+    "decodedBytes": 52117586,
+    "sha256": "3fff01ceb036fcf2bdf6e03b891de7f8b1752ea9fdf40b8ed136bb910bd2c9ad"
+  },
+  "compressedResources": {
+    "url": "/resources/9f98ea7d103f760a70d18b8551dab4e5a4837174653297aa73a127fab17da8ae/startup.cs16pack.gz",
+    "bytes": 12093242,
+    "decodedBytes": 24119507,
+    "sha256": "9f98ea7d103f760a70d18b8551dab4e5a4837174653297aa73a127fab17da8ae",
+    "scope": "original-startup-subset"
+  },
+  "selectedOriginalBodies": 15918,
+  "browser": {
+    "engine": "chromium",
+    "frame": true,
+    "error": null,
+    "reload": {
+      "frame": true,
+      "largeResourceRequests": []
+    },
+    "exactBuild": {
+      "loaderSha256": "ccb1eb76871e782bfc82da8b087873e485383a691cd59e3d745df508c2d9e33f",
+      "runtimeSha256": "3fff01ceb036fcf2bdf6e03b891de7f8b1752ea9fdf40b8ed136bb910bd2c9ad",
+      "resourceSha256": "9f98ea7d103f760a70d18b8551dab4e5a4837174653297aa73a127fab17da8ae"
+    },
+    "reportSha256": "858bf1387a4285527d2ee1e9bd97626b8275cf4b6f7609b138f17c63635de56f"
+  },
+  "webKit": "Desktop WebKit runner stalled while creating a page, before original Wasm execution. No WebKit or real iPhone verification claimed.",
+  "probes": {
+    "web-memory-probe.log": {
+      "sparseGuestMemoryProbe": true,
+      "originalHighAddressesPreserved": true,
+      "crossPageBytes": true,
+      "reversePointers": true,
+      "protectionMetadata": true,
+      "decommitZeroing": true,
+      "reallocPreservation": true,
+      "reuseZeroing": true
+    },
+    "web-adapter-probe.log": {
+      "softwareAdapterProbe": true,
+      "bufferBounds": true,
+      "sizeNegotiation": true,
+      "unconfiguredAddress": true,
+      "localUnicastIdentity": true,
+      "physicalAdapterExposed": false,
+      "actualSocketSendQueueLimit": true,
+      "actualDatagramReceiveQueueLimit": true
+    }
+  },
+  "nativeRegression": {
+    "browser": true,
+    "kernel": true
+  },
+  "originalProgramPatched": false,
+  "replacementEngine": false,
+  "macScreenshotDelivered": false
+}

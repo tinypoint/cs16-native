@@ -1,0 +1,705 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "path": "DemoPlayer.dll",
+      "bytes": 90112,
+      "sha256": "860f2d369c46831584aa827ff10a49b563f72e596d13c2c11058c87b73d0bd7d"
+    },
+    {
+      "path": "FileSystem_Stdio.dll",
+      "bytes": 118873,
+      "sha256": "e8e9c75a3b7a3d7d7b6b41e44f32c2841e8e40dd97b522707f9dc727eb86a13d"
+    },
+    {
+      "path": "Mp3dec.asi",
+      "bytes": 125952,
+      "sha256": "d3f3217fac27bcaf06bd47174eac0f20f0b00b71d96762962d141f646308a5a6"
+    },
+    {
+      "path": "Mss32.dll",
+      "bytes": 351744,
+      "sha256": "fe62f1eb6ba407df77619d16927abbefad3c726014f6bd1f8c37a7c3d6b781cc"
+    },
+    {
+      "path": "Mssv12.asi",
+      "bytes": 142848,
+      "sha256": "d08c3d1051c62429f66c0c6cbaa6acae13f0b8b7e41d0b7482a1810a85984ead"
+    },
+    {
+      "path": "Mssv29.asi",
+      "bytes": 161792,
+      "sha256": "ff4364a198f695dc95285cc66b6758635bae6ee099bef32f2d3de9691e295a17"
+    },
+    {
+      "path": "Steam.dll",
+      "bytes": 3649536,
+      "sha256": "cd7a2cc4bd64f6b96adb01b4b6a936311ed52e7fb1514aab19a14652be95387f"
+    },
+    {
+      "path": "core.dll",
+      "bytes": 677376,
+      "sha256": "9e4c01711b697e969cde61ebe2d02838c399fb0b4b0f59cbb180c0860f2a4067"
+    },
+    {
+      "path": "cstrike/Resource/ClientScheme.res",
+      "bytes": 19372,
+      "sha256": "2be73c413dc7aaa0a3cdd86e4d7e7819bec7476c7e28c11000ff2a1703133bde"
+    },
+    {
+      "path": "cstrike/Resource/GameMenu.res",
+      "bytes": 781,
+      "sha256": "e986986c3965311ec1bc7e07cd61a92775104bbbe005aa63e710f6bfebe7c248"
+    },
+    {
+      "path": "cstrike/Resource/UI/BackgroundPanel.res",
+      "bytes": 2120,
+      "sha256": "95f7b3867d72b530480ab925a7c72932fdefcda62e67106d940fd6000df85f4e"
+    },
+    {
+      "path": "cstrike/Resource/UI/BottomSpectator.res",
+      "bytes": 1941,
+      "sha256": "958979eca6adcc89f6fd8249029c0d8cca6e0a6b4ead8a1f41c4da25aaf8f388"
+    },
+    {
+      "path": "cstrike/Resource/UI/ClassMenu.res",
+      "bytes": 5042,
+      "sha256": "8f1ac399f8f6f7d19b20923ce94f95eb82c7a4e073d295e80b4dbbb5a62c1578"
+    },
+    {
+      "path": "cstrike/Resource/UI/MOTD.res",
+      "bytes": 1290,
+      "sha256": "ae995b068cde415df6b34b5629e07ca8764f24d659dd32f15f5756773a08773e"
+    },
+    {
+      "path": "cstrike/Resource/UI/ScoreBoard.res",
+      "bytes": 913,
+      "sha256": "6930c9c35e1cb16835a23df85c9d4f76b0a745ebfa10d1dd0b186e77fef82d63"
+    },
+    {
+      "path": "cstrike/Resource/UI/Spectator.res",
+      "bytes": 3946,
+      "sha256": "44d158624fd5d330adc437045b2fa2f618212407f2fed7a7f025c0eaf88f7c55"
+    },
+    {
+      "path": "cstrike/Resource/UI/TeamMenu.res",
+      "bytes": 3690,
+      "sha256": "d5334bc2776c34ed0abb88d0e2348ab9dda7533bde3a85b93a293c9b5168f2ee"
+    },
+    {
+      "path": "cstrike/Resource/cstrike_english.txt",
+      "bytes": 199830,
+      "sha256": "9636ada19faae4382c19fff22d4a512d3be296369a0ccca568d2fe088f7808e7"
+    },
+    {
+      "path": "cstrike/cached.wad",
+      "bytes": 129636,
+      "sha256": "2d766ef964049f0a6be6644b12c5d2f628cbfc63cfb8106e7df01caa31f90588"
+    },
+    {
+      "path": "cstrike/cl_dlls/client.dll",
+      "bytes": 950323,
+      "sha256": "1dbddceb74daa150921db3f201c9ed66c2e399884bd10f5674b06e5133c455f2"
+    },
+    {
+      "path": "cstrike/config.cfg",
+      "bytes": 4884,
+      "sha256": "aeda66d207b6281ee8a5ce13c646b88740757a970b22245018356b8dd3ca2dd9"
+    },
+    {
+      "path": "cstrike/custom.hpk",
+      "bytes": 25776,
+      "sha256": "f9f3aedfabf9680b345cf7209a3647292a2fba95e9cdb2adbda521affa1c3b5a"
+    },
+    {
+      "path": "cstrike/decals.wad",
+      "bytes": 960012,
+      "sha256": "c9e852b60197177f1e6f54992c3f0e886425ab6e6cafe9f1b1e5e6b3bf80850c"
+    },
+    {
+      "path": "cstrike/delta.lst",
+      "bytes": 12101,
+      "sha256": "22313453a4784015c4a73f7f6b21e8d15082a4d0497fd12eada5e104fb650532"
+    },
+    {
+      "path": "cstrike/gfx/palette.lmp",
+      "bytes": 768,
+      "sha256": "036b7ea3c8c03be214bb7d22b8d63ac27f63d547e42ca677fef344ddc780961e"
+    },
+    {
+      "path": "cstrike/gfx/vgui/CS_logo.tga",
+      "bytes": 16428,
+      "sha256": "cea5cc96747909253d034be70a5db4f8b7242b23797eeaa422f677bd5cf8b068"
+    },
+    {
+      "path": "cstrike/gfx/vgui/round_corner_ne.tga",
+      "bytes": 16428,
+      "sha256": "a8e1a53a89f3d4a4e92ee7b74de6470250d434732bde81bb6bfe6e6c7adae208"
+    },
+    {
+      "path": "cstrike/gfx/vgui/round_corner_nw.tga",
+      "bytes": 16428,
+      "sha256": "bc0265ef43a7bba66c05201e9bac17edb5c9be2102eb7d87684274175ba99501"
+    },
+    {
+      "path": "cstrike/gfx/vgui/round_corner_se.tga",
+      "bytes": 16428,
+      "sha256": "000f42b1cedc1aa49d498bc9c44cffd47dbc21c0cd5c51292cd324a86a27b78a"
+    },
+    {
+      "path": "cstrike/gfx/vgui/round_corner_small_ne.tga",
+      "bytes": 444,
+      "sha256": "e3fe2e666773d504dfbd74d30c0fb471d6f040e9572b41997a2b30f25eb462b3"
+    },
+    {
+      "path": "cstrike/gfx/vgui/round_corner_small_nw.tga",
+      "bytes": 444,
+      "sha256": "c87479a8e9c5ff3f53e4879eebf3b4e21135e3a595812f52a7b853c20ae07f48"
+    },
+    {
+      "path": "cstrike/gfx/vgui/round_corner_small_se.tga",
+      "bytes": 444,
+      "sha256": "8e2bf3d11e74b8d837914fbc2270a71b5367e79713ca8766ceefe51825d7fad3"
+    },
+    {
+      "path": "cstrike/gfx/vgui/round_corner_small_sw.tga",
+      "bytes": 444,
+      "sha256": "cf1a347ac1747ddc2aa6d72c57dedcdfb62fb0ad74e3f257c47bd03917745760"
+    },
+    {
+      "path": "cstrike/gfx/vgui/round_corner_sw.tga",
+      "bytes": 16428,
+      "sha256": "4f10fcb23fecc9b9ed0f46581aa0869ac757617ed513a593b7e0a98b4d7b145e"
+    },
+    {
+      "path": "cstrike/liblist.gam",
+      "bytes": 313,
+      "sha256": "521226795646802ce0e27d0c5da8c13ac779ec53b2e67d97a083434d9dbdcfdf"
+    },
+    {
+      "path": "cstrike/media/gamestartup.mp3",
+      "bytes": 1765706,
+      "sha256": "55bbffeb889597025c20e28d8f943c6568cfff01d044051c3b01ac1b97c585a3"
+    },
+    {
+      "path": "cstrike/resource/background/800_1_a_loading.tga",
+      "bytes": 196652,
+      "sha256": "c55efedcae6fc7782889166b4727b7189bd6e9d721ffb1e1c9bfaec861f60f69"
+    },
+    {
+      "path": "cstrike/resource/background/800_1_b_loading.tga",
+      "bytes": 196652,
+      "sha256": "7f36623408898201fa6ee836aa13c91a2d1436e0b846f2994fc7238bb255e0f0"
+    },
+    {
+      "path": "cstrike/resource/background/800_1_c_loading.tga",
+      "bytes": 196652,
+      "sha256": "80e9489996b9979c8565d1197a089adb12ae35592ff46fc63b960edfd109bb07"
+    },
+    {
+      "path": "cstrike/resource/background/800_1_d_loading.tga",
+      "bytes": 24620,
+      "sha256": "c762fdd3e790069866aff6e4701707ce03dfe5f5012ffc75f8a47c897f306a3c"
+    },
+    {
+      "path": "cstrike/resource/background/800_2_a_loading.tga",
+      "bytes": 196652,
+      "sha256": "fe52e1f9ba55d2dcc780909af0ad800f165421c79ad3712ac64c8e1a59a783e1"
+    },
+    {
+      "path": "cstrike/resource/background/800_2_b_loading.tga",
+      "bytes": 196652,
+      "sha256": "5e00d24840241f8f92fe9bd6bb43095677d17294d727ab21dc16df728c1f58fb"
+    },
+    {
+      "path": "cstrike/resource/background/800_2_c_loading.tga",
+      "bytes": 196652,
+      "sha256": "0cf3b4414d91dc4bc61e460bb2ab99ab4bc7a2a357f0be625df3274704e799a8"
+    },
+    {
+      "path": "cstrike/resource/background/800_2_d_loading.tga",
+      "bytes": 24620,
+      "sha256": "6d7160deb904ef2f4ebbb6c9b1569630203c93ebce69d8ce204ffc57d05a55f7"
+    },
+    {
+      "path": "cstrike/resource/background/800_3_a_loading.tga",
+      "bytes": 67628,
+      "sha256": "30d02365383affb1baab87cc4be50fc20c91928bdad7a226c8740d059792c34e"
+    },
+    {
+      "path": "cstrike/resource/background/800_3_b_loading.tga",
+      "bytes": 67628,
+      "sha256": "305add1f2876ff296c015d8ffd65c44ad75b38bdbbac196d97c7b20e6bff0c58"
+    },
+    {
+      "path": "cstrike/resource/background/800_3_c_loading.tga",
+      "bytes": 67628,
+      "sha256": "55f325a2f6d03e2fc976927d2a87a50b2d03de7fc32e7a349773b739df4cbd19"
+    },
+    {
+      "path": "cstrike/resource/background/800_3_d_loading.tga",
+      "bytes": 8492,
+      "sha256": "9ed9b9792bfbe068e3386075a8978adaf027bbd3eaccdead447f20d44a085d33"
+    },
+    {
+      "path": "cstrike/resource/game_menu.tga",
+      "bytes": 26540,
+      "sha256": "18a0f55f4b1940e4ab44e2dad4999a5afaadc9642686ab55d547c36a9a0274ff"
+    },
+    {
+      "path": "cstrike/resource/game_menu_mouseover.tga",
+      "bytes": 26540,
+      "sha256": "2e89fd1e81a94d42fed066a19f7c86a81b4b5cf033f36dc9e5e475afc5a466d1"
+    },
+    {
+      "path": "cstrike/sound/materials.txt",
+      "bytes": 11851,
+      "sha256": "af841038031f2c9ca133bddada406e03d7c7daaeb6dd13692ed9d6d621c27f11"
+    },
+    {
+      "path": "cstrike/sound/sentences.txt",
+      "bytes": 21860,
+      "sha256": "ea850d30fc680f87c0cd09684e910ed75c174c28fdf1944725a924c43c4bc8f0"
+    },
+    {
+      "path": "cstrike/spectatormenu.txt",
+      "bytes": 1176,
+      "sha256": "de094959dc03845d786fd195421dad1d1734aa7c75dc409a50cdbb0e74183890"
+    },
+    {
+      "path": "cstrike/spectcammenu.txt",
+      "bytes": 755,
+      "sha256": "8f8995949e750c2e0a36ef314d3c82a1695c55293442e75254146b48ee11c223"
+    },
+    {
+      "path": "cstrike/sprites/animglow01.spr",
+      "bytes": 29622,
+      "sha256": "a2d0ca4f2d9aabebb1752f9c1b5b0dee39b116a2f46b0fe468562989725fc0aa"
+    },
+    {
+      "path": "cstrike/sprites/dot.spr",
+      "bytes": 1086,
+      "sha256": "fbbe11b1a9cd5838cb85bef9396ba02143344efc7360e83b3de2fbe1a7ce578d"
+    },
+    {
+      "path": "cstrike/sprites/lgtning.spr",
+      "bytes": 7014,
+      "sha256": "44c18837cf85a810f31222665ba00267fb6c8822637c0e7ed57203aa853b58be"
+    },
+    {
+      "path": "cstrike/sprites/muzzleflash1.spr",
+      "bytes": 3134,
+      "sha256": "401813604b4888956b880658e22466be9837697b19d635ed0d150e9e0ffb0371"
+    },
+    {
+      "path": "cstrike/sprites/muzzleflash2.spr",
+      "bytes": 13158,
+      "sha256": "8d5de8592cd691bd4d228f2922208acfe33d20870406a48863dbb1a3c1bc9693"
+    },
+    {
+      "path": "cstrike/sprites/muzzleflash3.spr",
+      "bytes": 16422,
+      "sha256": "1240366a4701811cd63eaaa6f4cfadf6619408a9d77995c382f5ae8ae0bd7be5"
+    },
+    {
+      "path": "cstrike/sprites/richo1.spr",
+      "bytes": 1854,
+      "sha256": "563229da9238e2bd1c196f5de17a64d558c90eaacc07eb9627cdeb8984742bd9"
+    },
+    {
+      "path": "cstrike/sprites/shellchrome.spr",
+      "bytes": 4926,
+      "sha256": "7c6d3b5719cadce1f5ea55df021c4e5941c55d550e0686bb03a5ac78f0c350bc"
+    },
+    {
+      "path": "cstrike/sprites/white.spr",
+      "bytes": 1086,
+      "sha256": "01fe11f0ba961c2153b5e8bf5ee9d6df26654a288360dce9cdc913948b10aa50"
+    },
+    {
+      "path": "cstrike/steam.inf",
+      "bytes": 43,
+      "sha256": "0cb4299a57cbf77f55780a5dc4f29f646582947b07fd9590fab18c079c492039"
+    },
+    {
+      "path": "cstrike/titles.txt",
+      "bytes": 25390,
+      "sha256": "49564357e0ab9bd1ad1d3d09d61adc1cb781bb1f639155c1f38fb9b3695e2a4c"
+    },
+    {
+      "path": "cstrike/violence.cfg",
+      "bytes": 33,
+      "sha256": "cd070ca76413b446f9cf7fd8f69ee5b1fed01570b4fafbb261b1977b71e0f5f2"
+    },
+    {
+      "path": "dbg.dll",
+      "bytes": 69632,
+      "sha256": "8564b2f4c76aac5eb645514bd8fb82a1f57009557c506c0fcef3ce5b2ee078cf"
+    },
+    {
+      "path": "hl.exe",
+      "bytes": 81920,
+      "sha256": "aebc2327f2fb8c26340377b717eee79194d411e1ca6e4239c5c9c629dd6447c9"
+    },
+    {
+      "path": "hw.dll",
+      "bytes": 2058810,
+      "sha256": "525bdbddf2f180824944ee2576702e040c2f5554ca4290f40faec842e2cf02bb"
+    },
+    {
+      "path": "platform/AddOns/checkers/checkers.vdf",
+      "bytes": 180,
+      "sha256": "ab5234413a65968ebd585ae6ebdfcef6b6a90d11cef000417719ec855c513321"
+    },
+    {
+      "path": "platform/AddOns/chess/chess.vdf",
+      "bytes": 168,
+      "sha256": "e888e9e6e6f21854ad475563084dd4fbbed021a6b9afd2b2771041e2169c1686"
+    },
+    {
+      "path": "platform/AddOns/common/SteamAddOns_english.txt",
+      "bytes": 13558,
+      "sha256": "146461fb0f77cbea2e4ffac94ec02bbb5a10401e9a0a80f19e51fd20cdd64a51"
+    },
+    {
+      "path": "platform/AddOns/go/go.vdf",
+      "bytes": 156,
+      "sha256": "ec0d7ede38e67106e1736e169c4a40ef7abeb4bc5b0e2212db4cd274556120bf"
+    },
+    {
+      "path": "platform/AddOns/hearts/hearts.vdf",
+      "bytes": 172,
+      "sha256": "7a91c281acd7e649561eb7ba7a339ddd187ad098fb2560bc8ab012c0d4505aab"
+    },
+    {
+      "path": "platform/AddOns/spades/spades.vdf",
+      "bytes": 172,
+      "sha256": "fdba59ade7e403a5a4d0120fa906077d29b34a26a433a522a41f9b089d1ba594"
+    },
+    {
+      "path": "platform/Friends/TrackerDialog.res",
+      "bytes": 38,
+      "sha256": "eea939d00d9908ec514358278f7681960f7e94e25a9975998db53921f76db400"
+    },
+    {
+      "path": "platform/Friends/TrackerNET.dll",
+      "bytes": 155721,
+      "sha256": "459925dba1c3c3e3d642a8ac193431ebe33d7fb216e3080fcf0aa27cae79cfbc"
+    },
+    {
+      "path": "platform/Friends/TrackerUI.dll",
+      "bytes": 573515,
+      "sha256": "3361a00a59c28a9517cbb0140bba1a3f3e404facda90b3a5c347ac8939a442b4"
+    },
+    {
+      "path": "platform/Friends/servers.vdf",
+      "bytes": 341,
+      "sha256": "bd77ef5682c2c2d3223d28f57eeb3f809d0aeef8543a9716a0a2fc3bf471d45b"
+    },
+    {
+      "path": "platform/Resource/TrackerScheme.res",
+      "bytes": 14534,
+      "sha256": "7400197b4ba0e024037cd7502bac9fb31c677053fb7d88056d80f367bb450e74"
+    },
+    {
+      "path": "platform/Resource/platform_english.txt",
+      "bytes": 642,
+      "sha256": "5ecceb17bd492176e86addf0f5f3818afe10fb90bfb956217182d083842675af"
+    },
+    {
+      "path": "platform/Resource/vgui_english.txt",
+      "bytes": 3616,
+      "sha256": "591428d1cbcedc66c0aa3b0ced9b976c1447c611d2570888a3f3f10963d97e87"
+    },
+    {
+      "path": "platform/Servers/DialogServerBrowser.res",
+      "bytes": 1098,
+      "sha256": "606db63fc433721132e5a5e4f3b5f77940ac432cb5bdf2af3f562f6e8c1814c1"
+    },
+    {
+      "path": "platform/Servers/DialogServerPage.res",
+      "bytes": 7677,
+      "sha256": "81ac3e81f660882846bb11ee6f6a4075648e8dfb23d50b6af5a51475358c4117"
+    },
+    {
+      "path": "platform/Servers/ServerBrowser.dll",
+      "bytes": 1138774,
+      "sha256": "32aa55403b7f5aa3e816ae05b1ea7624865a46800931e9483b9feafc841b62d7"
+    },
+    {
+      "path": "platform/config/FriendsData.vdf",
+      "bytes": 82,
+      "sha256": "f18407659b746f612de5f03856e57321d79b369af9e6166279c8b621420825de"
+    },
+    {
+      "path": "platform/config/InGameDialogConfig.vdf",
+      "bytes": 1756,
+      "sha256": "eb97b14a4203122f33cb99c2eafdca7c297e852694cc2ff049244eb31ee78ec6"
+    },
+    {
+      "path": "platform/config/MasterServers.vdf",
+      "bytes": 329,
+      "sha256": "2a39f63313ef729e31730476df9577784ef0456241dca463332256a3cb70b858"
+    },
+    {
+      "path": "platform/config/ServerBrowser.vdf",
+      "bytes": 50787,
+      "sha256": "386d2a7901a74d81827ab5f89d9beeabc79888e9fda7ff46ade2e334415ab6df"
+    },
+    {
+      "path": "platform/friends/icon_away.tga",
+      "bytes": 1563,
+      "sha256": "064fa2293aecd49378201e850d9b5b8f7818d90b0e44b3d72035c06e0dfc7a73"
+    },
+    {
+      "path": "platform/friends/icon_busy.tga",
+      "bytes": 1563,
+      "sha256": "53be0dead29ecf68853b3105d5021c072dec11156acc711a89c31f367190ac2e"
+    },
+    {
+      "path": "platform/friends/icon_snooze.tga",
+      "bytes": 1563,
+      "sha256": "01b7ed5fd3bebd5f040934f16cb4f0092c8fef48ae4df9d84a848f9cf555e2e2"
+    },
+    {
+      "path": "platform/friends/trackerui_english.txt",
+      "bytes": 31086,
+      "sha256": "97ce83a1e8588c1171fbf524bde4735fa0e191895fa374e197e3a1cff029b89d"
+    },
+    {
+      "path": "platform/resource/icon_steam.tga",
+      "bytes": 1307,
+      "sha256": "dc352dfbaa9afa9f7d8a631acf2e833948d229a1ab13ccebebb37fac562a2b81"
+    },
+    {
+      "path": "platform/resource/icon_steam_disabled.tga",
+      "bytes": 1307,
+      "sha256": "c5dea8d1644a716a75142babd792457bc7b3ec7e9949c7e740b131421b3d67b1"
+    },
+    {
+      "path": "platform/servers/Regions.vdf",
+      "bytes": 587,
+      "sha256": "1ef812d97738df3ff3f6ec77d7ff7f5ce2efa5e6693c11218a153031ba11f140"
+    },
+    {
+      "path": "platform/servers/serverbrowser_english.txt",
+      "bytes": 18848,
+      "sha256": "270cd65a9b4a3d0b489e96462946d5d0d876e77e275cc865f5514de419efa2e7"
+    },
+    {
+      "path": "platform/steam/games/ClientGameInfo.vdf",
+      "bytes": 4019,
+      "sha256": "c49eb71719a0380a6e0295cf1dd38ae7eb3c59a397a90e050683d6bb4c40f694"
+    },
+    {
+      "path": "platform/steam/games/PlatformMenu.vdf",
+      "bytes": 884,
+      "sha256": "96c87a9c3fc73445f43216ad6e319b6968e1edf89146af34d214fb11fac1a05a"
+    },
+    {
+      "path": "platform/steam/games/icon_cs.tga",
+      "bytes": 1068,
+      "sha256": "f6ca2ed8b5a442d7fadb1cb992257c893763b16de2e93066951a301da9b6f5d1"
+    },
+    {
+      "path": "platform/steam/games/icon_cz.tga",
+      "bytes": 1068,
+      "sha256": "9c13d4a088798b39afd4e45f8c040c3d0b2120aaca1aa71f6333ab8bcfdf3453"
+    },
+    {
+      "path": "platform/steam/games/icon_dedicated.tga",
+      "bytes": 1068,
+      "sha256": "3c6753f06357498413dc24a34664d458b69c4898cb388b05c3e2e99309c0ab6a"
+    },
+    {
+      "path": "platform/steam/games/icon_dmc.tga",
+      "bytes": 1068,
+      "sha256": "5ca748989d029916da7ab52901cffafa517b5fb2af4b687c97871e3dc5bca15a"
+    },
+    {
+      "path": "platform/steam/games/icon_dod.tga",
+      "bytes": 1068,
+      "sha256": "29dc57791427192fdd49f2eaf772fc092cfc05f698b7d316d06010566d2258be"
+    },
+    {
+      "path": "platform/steam/games/icon_hl.tga",
+      "bytes": 1068,
+      "sha256": "386ad653bd035630d46c5fd9a23a58e0f5def4398af166d85cb3cbb8b8db4d59"
+    },
+    {
+      "path": "platform/steam/games/icon_opfor.tga",
+      "bytes": 1068,
+      "sha256": "0d3983c9bd5f437d3adf9931a72a5ae5cc696e3ae9d25431676a88299101c584"
+    },
+    {
+      "path": "platform/steam/games/icon_ric.tga",
+      "bytes": 1004,
+      "sha256": "0b36755256bdda68d733693e6da48aafdd4260584a45fc0600c115360b9e53e0"
+    },
+    {
+      "path": "platform/steam/games/icon_tfc.tga",
+      "bytes": 1068,
+      "sha256": "d3db3c2fd85f55404ce74bda826a2c2a9d818c545cecbf596eb28236c0f49ed8"
+    },
+    {
+      "path": "steamclient.dll",
+      "bytes": 397312,
+      "sha256": "8a6e0db0ba6b3485d82128ed629d9c4f930ab83603c11d32690de6385cac1994"
+    },
+    {
+      "path": "swda.dll",
+      "bytes": 225280,
+      "sha256": "e773f3f3510958b659a3ddbf2c0f14cceb7c2695a10a56a0e0f86a1c18d36499"
+    },
+    {
+      "path": "tier0_s.dll",
+      "bytes": 217088,
+      "sha256": "54d92abded54eb659b4623a342ead18c65a10f471961247036c1a9e31e923abe"
+    },
+    {
+      "path": "valve/Resource/UI/TextWindow.res",
+      "bytes": 1233,
+      "sha256": "cec75ccaa0dcc777903bffad409abcd7cd7424a4edd609574fd6b0ac74b5798a"
+    },
+    {
+      "path": "valve/Resource/gameui_english.txt",
+      "bytes": 23276,
+      "sha256": "86c6e8e549f714d654cdb008d828ec637f5fe0c8e6c4aeb02d996201d3d0eb15"
+    },
+    {
+      "path": "valve/Resource/valve_english.txt",
+      "bytes": 12572,
+      "sha256": "7f9d5ff47495433ba8d18e9c99a73fb5acb9dc576474daab9032e7e4cd3ef30b"
+    },
+    {
+      "path": "valve/autoexec.cfg",
+      "bytes": 19,
+      "sha256": "3ccd896d8c4d0937c94ff4c8e019bdcabd26edaa9fe83d7f5677f7b22e8963bf"
+    },
+    {
+      "path": "valve/cl_dlls/GameUI.dll",
+      "bytes": 1572928,
+      "sha256": "2f1424c3e9a471c5b92d42aaaad6e63227fd6af5967915482c48c75028a8ced9"
+    },
+    {
+      "path": "valve/cl_dlls/particleman.dll",
+      "bytes": 81920,
+      "sha256": "efe9673812f2603612679327ac2312cdca68317821d977f8986174e6dd062bdf"
+    },
+    {
+      "path": "valve/decals.wad",
+      "bytes": 924840,
+      "sha256": "17726e8174729011c7ea4e1e37b4ccfe7a9aa4abb82c2aaca87872cbe0c106d0"
+    },
+    {
+      "path": "valve/fonts.wad",
+      "bytes": 104034,
+      "sha256": "d6989bb9fc90c437f9957cc7bceb8f2550b38b8791df679753b7c08c98632b80"
+    },
+    {
+      "path": "valve/gfx.wad",
+      "bytes": 86608,
+      "sha256": "6fd53d6ef8d704299734018e3069ec12551e7fb2065804a1d4e5c936ac4033bd"
+    },
+    {
+      "path": "valve/gfx/vgui/640_scoreboardtracker.tga",
+      "bytes": 1068,
+      "sha256": "cf8cc8790eb5ca7bf528c642e85b081fd23910715f1101751adbd00ad5eb0e5c"
+    },
+    {
+      "path": "valve/gfx/vgui/640_speaker1.tga",
+      "bytes": 707,
+      "sha256": "0fb408e093e9608ca37636365e87a9ea6e4709d0964794de44b2692003594378"
+    },
+    {
+      "path": "valve/gfx/vgui/640_speaker2.tga",
+      "bytes": 751,
+      "sha256": "08e6b32083b0344ea416e61c726029c910b9a700ca3daab538b9e952982d609d"
+    },
+    {
+      "path": "valve/gfx/vgui/640_speaker3.tga",
+      "bytes": 835,
+      "sha256": "d18b12f6790cfa664d701ca26091768971f87935b494ed8d2574141a5f346e9f"
+    },
+    {
+      "path": "valve/gfx/vgui/640_voiceblocked.tga",
+      "bytes": 1068,
+      "sha256": "26619855d0615c1f7d3ef9d358de7943d2bb41b6a1611c793b26b233c6fa34b3"
+    },
+    {
+      "path": "valve/gfx/vgui/icntlk_pl.tga",
+      "bytes": 4140,
+      "sha256": "43629f5aa0b98c054c5d57ff5160b808ef01ff7b49a52f2bebd8bdb9241a7a0e"
+    },
+    {
+      "path": "valve/gfx/vgui/mouse.tga",
+      "bytes": 1068,
+      "sha256": "5768afa6d5852d71d2551319ee8a62200592e9ae5e2a62dc4d921da2a23b7cd9"
+    },
+    {
+      "path": "valve/gfx/vgui/timer.tga",
+      "bytes": 1068,
+      "sha256": "99986396ea8ebd9ab4eb1221b52db2a8a024e67c748e0b8080d8dad24e4e9cd2"
+    },
+    {
+      "path": "valve/language.cfg",
+      "bytes": 13,
+      "sha256": "6db675ec7689b119ab9550f4bcc732ff8ca80f29743dd41228b25849514385d7"
+    },
+    {
+      "path": "valve/resource/BackgroundLayout.txt",
+      "bytes": 714,
+      "sha256": "f1d2461e3936ab6397a852f4efb971ad807bea0c6c99ca8377886ccd88ada750"
+    },
+    {
+      "path": "valve/resource/BackgroundLoadingLayout.txt",
+      "bytes": 714,
+      "sha256": "f1d2461e3936ab6397a852f4efb971ad807bea0c6c99ca8377886ccd88ada750"
+    },
+    {
+      "path": "valve/resource/steam_menu.tga",
+      "bytes": 25132,
+      "sha256": "71c7a53873699e102fddc49102c76c8773f29e7f8cc97a317b7314fcc2ba7fd2"
+    },
+    {
+      "path": "valve/resource/steam_menu_mouseover.tga",
+      "bytes": 25132,
+      "sha256": "b25ad9c31fe119b44b159c7dc89a083b8457fb23e8e3864ea8f2ec31cb13e77c"
+    },
+    {
+      "path": "valve/valve.rc",
+      "bytes": 356,
+      "sha256": "5b1b2dd68c2ff1fc6cda3f415cfa7087884ca075c371574aa19c1e4474c4d540"
+    },
+    {
+      "path": "vgui.dll",
+      "bytes": 352256,
+      "sha256": "0d4472d21443de839080860a300cca6b9436508f329d33d712e5c9bc07d4d998"
+    },
+    {
+      "path": "vgui2.dll",
+      "bytes": 258114,
+      "sha256": "57f4f30018be7484c0104f48d824a7bffa0dd6194bbb72ad74a8ec721d98ff44"
+    },
+    {
+      "path": "voice_miles.dll",
+      "bytes": 53248,
+      "sha256": "0f21ec2075ba4a75e7a44c0cadc1247faed88067c93aa2a58a950e2cb0db295a"
+    },
+    {
+      "path": "vstdlib_s.dll",
+      "bytes": 204800,
+      "sha256": "86d1c234c266966d424976b0f81a46495057aa7a791edc16bef5f04238720dc0"
+    },
+    {
+      "path": "fonts/LiberationSans-Regular.ttf",
+      "bytes": 410712,
+      "sha256": "76d04c18ea243f426b7de1f3ad208e927008f961dc5945e5aad352d0dfde8ee8"
+    },
+    {
+      "path": "fonts/LICENSE",
+      "bytes": 4414,
+      "sha256": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b"
+    }
+  ]
+}

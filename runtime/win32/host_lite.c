@@ -294,8 +294,9 @@ uint32_t hle_resolve_or_stub(const char *name) {
 }
 
 /* ------------------------------------------------------- native -> guest */
+extern void cs16_profile_target(uint32_t va);
 uint32_t hle_call_guest(uint32_t va, int nargs, const uint32_t *args) {
-    mach_enter();
+    mach_enter();cs16_profile_target(va);
     recomp_func_t f = recomp_lookup(va);       /* under the machine: shim_entry's index is shared */
     if (!f) f = recomp_lookup_import(va);
     if (!f) hle_fatal("no lifted function at 0x%08X", va);

@@ -16,6 +16,11 @@ import urllib.parse
 
 ROOT=Path(__file__).resolve().parents[1];ACCESS=ROOT/'.local/web-access'
 
+class VercelError(RuntimeError):
+    def __init__(self,status,payload):
+        self.status=int(status);self.payload=payload
+        super().__init__('Vercel '+str(status)+': '+str(payload.get('error',{}).get('message','API error')))
+
 def api(method,path,data=None):
     auth=Path(os.environ.get('CS16_VERCEL_AUTH',str(ACCESS/'vercel-auth.json')))
     token=json.loads(auth.read_text())['access_token']
@@ -30,7 +35,7 @@ def api(method,path,data=None):
     body,status=response.stdout.rsplit('\n',1)
     value=json.loads(body) if body else {}
     if not 200<=int(status)<300:
-        raise RuntimeError('Vercel '+status+': '+str(value.get('error',{}).get('message','API error')))
+        raise VercelError(status,value)
     return value
 
 def main():
@@ -40,7 +45,9 @@ def main():
         previous=json.loads(state.read_text());result=api('GET','/v13/deployments/'+previous['id'])
         print(json.dumps({key:result.get(key) for key in ('id','readyState','url','alias')},ensure_ascii=False));return
     project=json.loads((ACCESS/'vercel-project.json').read_text())['project']
-    site=ROOT/'web';config=json.loads((site/'vercel.json').read_text());files=[]
+    site=ROOT/'web'
+    if json.loads((site/'manifest.json').read_text()).get('preview',{}).get('ready'):raise RuntimeError('Use prepare_web_preview.py and publish_web_preview.py to include verified program/assets')
+    config=json.loads((site/'vercel.json').read_text());files=[]
     for source in sorted(site.rglob('*')):
         relative=source.relative_to(site)
         if not source.is_file() or any(part.startswith('.') for part in relative.parts):continue

@@ -31,7 +31,7 @@ static const uint8_t ids[INTERFACES][16]={
 static const uint8_t events_iid[16]={0xa0,0x15,0xa7,0x34,0x87,0x65,0xd0,0x11,0x92,0x4a,0,0x20,0xaf,0xc7,0xac,0x4d};
 typedef struct {
  uint32_t object,refs,site,sink,view_sink,view_flags,view_aspect,cookie,hwnd;
- int left,top,width,height,visible,silent,initialized,active,loaded,view_dirty;
+ int left,top,width,height,visible,silent,initialized,active,loaded,view_dirty,navigation_requested;
  void *native;char url[8192];
 } browser_t;
 static browser_t browsers[MAX_BROWSERS];
@@ -117,7 +117,7 @@ static void navigate(int variant){
  /* Optional flags/target/post data/headers are not yet supported. */
  for(unsigned i=2;i<6;i++)if(A32(i)){uint32_t p=A32(i);if(!gm_accessible(p,16,0))RET(E_POINTER,6);uint16_t vt=MEM16(p);if(vt && vt!=1 && vt!=10)RET(E_NOTIMPL,6);}
  char *s=bstr_utf8(url);if(!s)RET(E_INVALIDARG,6);if(strlen(s)>=sizeof b->url){free(s);RET(E_INVALIDARG,6);}
- int ok=cs16_browser_native_navigate(b->native,s);if(ok){b->loaded=0;strcpy(b->url,s);b->initialized=1;fprintf(stderr,"[webbrowser] navigation requested %s\n",s);}free(s);RET(ok?S_OK:E_FAIL,6);
+ int ok=cs16_browser_native_navigate(b->native,s);if(ok){b->loaded=0;b->navigation_requested=1;strcpy(b->url,s);b->initialized=1;fprintf(stderr,"[webbrowser] navigation requested %s\n",s);}free(s);RET(ok?S_OK:E_FAIL,6);
 }
 static void navigate1(void){navigate(0);}
 static void navigate2(void){navigate(1);}
@@ -166,7 +166,7 @@ static void event(browser_t *b,uint32_t dispid){
 void cs16_webbrowser_pump(void){
  cs16_browser_native_pump();for(unsigned i=0;i<MAX_BROWSERS;i++){browser_t *b=&browsers[i];if(!b->object)continue;unsigned flags=cs16_browser_native_events(b->native);if(!flags&&!b->view_dirty)continue;b->refs++;int dirty=b->view_dirty;b->view_dirty=0;
  if(dirty&&!(flags&1))view_notify(b);
- if(flags&1){b->loaded=1;fprintf(stderr,"[webbrowser] navigation completed\n");view_notify(b);event(b,252);event(b,259);}
+ if(flags&1){b->loaded=1;fprintf(stderr,"[webbrowser] navigation completed\n");view_notify(b);if(b->navigation_requested){b->navigation_requested=0;event(b,252);event(b,259);}}
  if(flags&2)fprintf(stderr,"[webbrowser] navigation error (no completion event)\n");release(b);}
 }
 /* Build canonical slot layouts. Unknown entries remain explicit stop shims. */
@@ -235,7 +235,7 @@ int cs16_probe_browser(void){
  uint32_t ready_out[]={out};B_CHECK(!vcall(iface(b,BROWSER),56,1,ready_out)&&MEM32(out)==0);
  B_CHECK(vcall(iface(b,BROWSER),18,1,ready_out)==E_FAIL&&!MEM32(out));
  B_CHECK(!vcall(iface(b,PERSIST),8,0,NULL));B_CHECK(wait_loaded(b));
- B_CHECK(!vcall(iface(b,BROWSER),56,1,ready_out)&&MEM32(out)==4);
+ B_CHECK(!vcall(iface(b,BROWSER),56,1,ready_out)&&MEM32(out)==4);B_CHECK(!probe_documents&&!probe_navigations);
  uint32_t docout[]={out};B_CHECK(!vcall(iface(b,BROWSER),18,1,docout)&&MEM32(out)==iface(b,DOCUMENT));uint32_t doc=MEM32(out);
  qi[0]=ids_guest+DOCUMENT*16;B_CHECK(!vcall(doc,0,2,qi)&&MEM32(out)==doc);vcall(doc,2,0,NULL);vcall(doc,2,0,NULL);
  uint32_t sink=hle_com_new(hle_com_vtable(probe_methods),8);uint32_t advise[]={1,2,sink};B_CHECK(!vcall(iface(b,VIEW),7,3,advise));B_CHECK(probe_views==1&&probe_references==2);

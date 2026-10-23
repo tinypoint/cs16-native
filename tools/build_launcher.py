@@ -12,7 +12,7 @@ import argparse
 ROOT=Path(__file__).resolve().parents[1];GEN=ROOT/'.local/lift/hl';OUT=ROOT/'.local/launcher-native'
 
 def main():
-    ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--diagnostic',action='store_true',help='Allow modules with reported semantic gaps; unsupported instructions still abort');args=ap.parse_args()
+    ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--diagnostic',action='store_true',help='Allow modules with reported semantic gaps; unsupported instructions still abort');ap.add_argument('--profile-entries',action='store_true',help='Record every reached original function using the optional runtime profiler');args=ap.parse_args()
     modules=[GEN,*[ROOT/'.local/lift'/name for name in ('filesystem','vgui','steam','mss32','dbg','hw','cstrike-client','particleman','vgui2','gameui','demoplayer','mp3dec','mssv29','mssv12','voice-miles','core','swda','trackerui','serverbrowser','trackernet','steamclient','vstdlib','tier0')]]
     for module in modules:
         result=json.loads((module/'result.json').read_text())
@@ -33,6 +33,9 @@ def main():
         for p in sorted(module.glob('recomp_*.c')):
             if p.name=='recomp_dispatch.c':continue
             source=p.read_text();needle='#include "recomp_types.h"';assert source.count(needle)==1
+            if args.profile_entries:
+                source=re.sub(r'(RECOMP_ENTER\((0x[0-9A-Fa-f]+)u\);)',lambda m:m[1]+' cs16_profile_target('+m[2]+');',source)
+                source=source.replace('#include "recomp_funcs.h"','#include "recomp_funcs.h"\nvoid cs16_profile_target(uint32_t);')
             materialized=build/p.name
             materialized.write_text(source.replace(needle,needle+'\n#include "cs16_dispatch.h"'))
             lifted.append(materialized)
