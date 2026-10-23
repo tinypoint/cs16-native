@@ -8,7 +8,7 @@
 
 已接收并解开 `CounterStrike1.6.zip`，完成原程序清单、哈希和 PE／旧 GoldSrc BLOB 格式审计。已将上传的 `mp.dll` 中 3 个原程序函数转换为 C，再编译到 ARM64 与 Wasm，64 组受控对照用例与 Unicorn x86 参考一致。
 
-原始 hl.exe 已在 ARM64 诊断宿主中执行；原引擎创建了 Valve001 窗口和实际 OpenGL 上下文，原客户端已开始执行，ParticleMan 和 GameUI 的原 DLL 入口返回成功。窗口／字体／GPU 检查，以及原浮点环境函数的 5 组 x86 对照通过。**尚未得到 CS 游戏画面，也没有可玩的 Mac 或 Web 入口**。原 Steam 异常现已交给原捕获函数处理，启动继续进入 VGUI2 和菜单资源加载；已接通原 HTML 面板的 WebKit 初始化及部分 COM／DOM 接口，原启动继续加载队伍、计分板和旁观界面资源。句柄复制、实际 CoreAudio/DirectSound 输出和网络接口序号桥接已接通，原启动继续进入好友／服务器界面初始化。详见 [进度与证据](docs/STATUS.md)、[窗口与图形阶段](docs/NATIVE_DISPLAY.md)、[异常处理阶段](docs/NATIVE_EXCEPTION.md)、[内嵌网页组件](docs/WEBBROWSER.md)、[音频与系统接口阶段](docs/AUDIO_STARTUP.md)。
+原始 hl.exe 已在 ARM64 诊断宿主中执行；原引擎创建了 Valve001 窗口和实际 OpenGL 上下文，原客户端已开始执行，ParticleMan 和 GameUI 的原 DLL 入口返回成功。窗口／字体／GPU 检查，以及原浮点环境函数的 5 组 x86 对照通过。**已抓到原版 CS 背景／界面的第一帧，但尚不可玩，完整 Web 运行时仍未建立**。原 Steam 异常现已交给原捕获函数处理，启动继续进入 VGUI2 和菜单资源加载；已接通原 HTML 面板的 WebKit 初始化及部分 COM／DOM 接口，原启动继续加载队伍、计分板和旁观界面资源。句柄复制、实际 CoreAudio/DirectSound 输出和网络接口序号桥接已接通，原启动继续完成好友／服务器界面初始化并提交了实际 OpenGL 画面，目前在 HTML 元素的事件订阅接口停止。详见 [进度与证据](docs/STATUS.md)、[窗口与图形阶段](docs/NATIVE_DISPLAY.md)、[异常处理阶段](docs/NATIVE_EXCEPTION.md)、[内嵌网页组件](docs/WEBBROWSER.md)、[音频与系统接口阶段](docs/AUDIO_STARTUP.md)、[原程序第一帧](docs/FIRST_FRAME.md)。
 
 ## 仓库与手机访问
 

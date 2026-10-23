@@ -432,20 +432,14 @@ static uint32_t mix(const dc_t *d, uint32_t under, uint32_t over, int a) {
     return out;
 }
 
-static void g_TextOutA(void) {                           /* (hdc, x, y, text, n) */
-    dc_t *d = DC(A32(0));
-    int n = (int)A32(4);
-    if (!d || !d->px || n <= 0 || (d->bpp != 16 && d->bpp != 32)) RET(1, 5);
-    font_t *f = FONT(d->font);
-    TTF_Font *t = ttf_of(f);
-    if (!t) RET(1, 5);
-    char buf[1024];
-    if (n >= (int)sizeof buf) n = sizeof buf - 1;
-    memcpy(buf, APTR(3), (size_t)n), buf[n] = 0;
+static int text_out(dc_t *d,int logical_x,int logical_y,const char *buf,int utf8,const int *clip){
+    if(!d || !d->px || (d->bpp!=16 && d->bpp!=32))return 0;
+    if(!*buf)return 1;
+    font_t *f=FONT(d->font);TTF_Font *t=ttf_of(f);if(!t)return 0;
     SDL_Color white = { 255, 255, 255, 255 };
-    SDL_Surface *s = f->quality == 3 ? TTF_RenderText_Solid(t, buf, white) : TTF_RenderText_Blended(t, buf, white);
-    if (!s) RET(1, 5);
-    int x = (int)A32(1) - d->wox + d->vox, y = (int)A32(2) - d->woy + d->voy;
+    SDL_Surface *s = f->quality == 3 ? (utf8?TTF_RenderUTF8_Solid(t, buf, white):TTF_RenderText_Solid(t, buf, white)) : (utf8?TTF_RenderUTF8_Blended(t, buf, white):TTF_RenderText_Blended(t, buf, white));
+    if (!s) return 0;
+    int x = (d->align&1?d->cpx:logical_x) - d->wox + d->vox, y = (d->align&1?d->cpy:logical_y) - d->woy + d->voy;
     if ((d->align & 6) == 6) x -= s->w / 2;              /* TA_CENTER */
     else if (d->align & 2) x -= s->w;                    /* TA_RIGHT */
     if ((d->align & 24) == 24) y -= TTF_FontAscent(t);   /* TA_BASELINE */
@@ -454,10 +448,10 @@ static void g_TextOutA(void) {                           /* (hdc, x, y, text, n)
     SDL_LockSurface(s);
     for (int j = 0; j < s->h; j++) {
         int py = y + j;
-        if (py < 0 || py >= d->h) continue;
+        if (py < 0 || py >= d->h || (clip && (py<clip[1] || py>=clip[3]))) continue;
         for (int i = 0; i < s->w; i++) {
             int px = x + i;
-            if (px < 0 || px >= d->w) continue;
+            if (px < 0 || px >= d->w || (clip && (px<clip[0] || px>=clip[2]))) continue;
             int a;
             if (s->format->BytesPerPixel == 1) a = ((const uint8_t *)s->pixels)[j * s->pitch + i] ? 255 : 0;
             else a = (int)(((const uint32_t *)((const uint8_t *)s->pixels + j * s->pitch))[i] >> 24);
@@ -466,9 +460,38 @@ static void g_TextOutA(void) {                           /* (hdc, x, y, text, n)
         }
     }
     SDL_UnlockSurface(s);
+    if(d->align&1)d->cpx+=s->w;
     SDL_FreeSurface(s);
-    RET(1, 5);
+    return 1;
 }
+static void g_TextOutA(void){
+ uint32_t n=A32(4);if(n>65535 || (n&&!gm_accessible(A32(3),n,0))){hle_set_last_error(87);RET(0,5);}
+ char *text=malloc((size_t)n+1);if(!text)RET(0,5);if(n)memcpy(text,APTR(3),n);text[n]=0;
+ int result=text_out(DC(A32(0)),(int)A32(1),(int)A32(2),text,0,NULL);free(text);RET(result,5);
+}
+static void rectfill(dc_t *,int,int,int,int,uint32_t);
+static void ext_text_out(int wide){
+ dc_t *d=DC(A32(0));uint32_t flags=A32(3),rect=A32(4),source=A32(5),n=A32(6);
+ if(!d||n>65535||(n&&!gm_accessible(source,n*(wide?2:1),0))||((flags&6)&&!gm_accessible(rect,16,0))){hle_set_last_error(87);RET(0,8);}
+ /* Glyph-index/PDY, custom advances and bidi shaping are not implemented. */
+ if((flags&~6u)||A32(7)){hle_set_last_error(120);RET(0,8);}
+ char *text=malloc((size_t)n*(wide?3:1)+1);if(!text)RET(0,8);unsigned used=0;
+ for(unsigned i=0;i<n;i++){
+  uint32_t c=wide?MEM16(source+2*i):MEM8(source+i);
+  if(wide&&c>=0xd800&&c<=0xdbff){if(i+1>=n||MEM16(source+2*i+2)<0xdc00||MEM16(source+2*i+2)>0xdfff){free(text);hle_set_last_error(1113);RET(0,8);}c=0x10000+((c-0xd800)<<10)+(MEM16(source+2*++i)-0xdc00);}
+  else if(wide&&c>=0xdc00&&c<=0xdfff){free(text);hle_set_last_error(1113);RET(0,8);}
+  if(!wide||c<0x80)text[used++]=(char)c;
+  else if(c<0x800){text[used++]=0xc0|(c>>6);text[used++]=0x80|(c&63);}
+  else if(c<0x10000){text[used++]=0xe0|(c>>12);text[used++]=0x80|((c>>6)&63);text[used++]=0x80|(c&63);}
+  else{text[used++]=0xf0|(c>>18);text[used++]=0x80|((c>>12)&63);text[used++]=0x80|((c>>6)&63);text[used++]=0x80|(c&63);}
+ }
+ text[used]=0;int clip[4];if(flags&6)for(unsigned i=0;i<4;i++)clip[i]=(int32_t)MEM32(rect+4*i);
+ if(flags&2)rectfill(d,clip[0],clip[1],clip[2],clip[3],d->bk);
+ if(flags&4){clip[0]+=d->vox-d->wox;clip[2]+=d->vox-d->wox;clip[1]+=d->voy-d->woy;clip[3]+=d->voy-d->woy;}
+ int result=n?text_out(d,(int)A32(1),(int)A32(2),text,wide,flags&4?clip:NULL):1;free(text);RET(result,8);
+}
+static void g_ExtTextOutA(void){ext_text_out(0);}
+static void g_ExtTextOutW(void){ext_text_out(1);}
 
 /* ---- drawing ---- */
 static void rectfill(dc_t *d, int l, int t, int r, int b, uint32_t cr) {
@@ -514,7 +537,11 @@ static void g_PatBlt(void) {                             /* (hdc,x,y,w,h,rop): B
     RET(1, 6);
 }
 static void g_SetPixel(void) { dc_t *d = DC(A32(0)); if (d && d->px) { int x = (int)A32(1) - d->wox + d->vox, y = (int)A32(2) - d->woy + d->voy; if (x >= 0 && y >= 0 && x < d->w && y < d->h) put(d, x, y, pack(d, A32(3))); } RET(A32(3), 4); }
-static void g_GetPixel(void) { dc_t *d = DC(A32(0)); int x = (int)A32(1), y = (int)A32(2); RET(d && d->px && x >= 0 && y >= 0 && x < d->w && y < d->h ? get(d, x, y) : 0xFFFFFFFFu, 3); }
+static void g_GetPixel(void){
+ dc_t *d=DC(A32(0));if(!d||!d->px||(d->bpp!=16&&d->bpp!=32))RET(UINT32_MAX,3);
+ int x=(int)A32(1)-d->wox+d->vox,y=(int)A32(2)-d->woy+d->voy;if(x<0||y<0||x>=d->w||y>=d->h)RET(UINT32_MAX,3);
+ uint32_t pixel=get(d,x,y),r,g,b;if(d->bpp==16){r=((pixel>>11)&31)*255/31;g=((pixel>>5)&63)*255/63;b=(pixel&31)*255/31;}else{r=(pixel>>16)&255;g=(pixel>>8)&255;b=pixel&255;}RET(r|(g<<8)|(b<<16),3);
+}
 static void g_MoveToEx(void) { dc_t *d = DC(A32(0)); if (A32(3) && d) { MEM32(A32(3)) = (uint32_t)d->cpx; MEM32(A32(3) + 4) = (uint32_t)d->cpy; } if (d) { d->cpx = (int)A32(1); d->cpy = (int)A32(2); } RET(1, 4); }
 static void g_LineTo(void) {                             /* Bresenham cp -> (x,y) in pen colour */
     dc_t *d = DC(A32(0)); int x1 = (int)A32(1), y1 = (int)A32(2);
@@ -579,6 +606,7 @@ const win32hle_shim win32hle_gdidc[] = {
     { "GetBkMode", g_GetBkMode }, { "SetViewportOrgEx", g_SetViewportOrgEx }, { "SetWindowOrgEx", g_SetWindowOrgEx },
     { "SetGraphicsMode", g_SetGraphicsMode }, { "ModifyWorldTransform", g_ModifyWorldTransform },
     { "GetTextExtentPoint32A", g_GetTextExtentPoint32A }, { "GetTextExtentPointA", g_GetTextExtentPoint32A },
+    { "ExtTextOutA", g_ExtTextOutA }, { "ExtTextOutW", g_ExtTextOutW },
     { "GetTextMetricsA", g_GetTextMetricsA }, { "TextOutA", g_TextOutA },
     { 0, 0 }
 };

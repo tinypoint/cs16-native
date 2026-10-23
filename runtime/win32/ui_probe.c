@@ -46,6 +46,21 @@ int cs16_probe_ui(void){
  args[0]=0;args[1]=0x3f800000;call("glVertex3f",3,args);call("glEnd",0,NULL);
  uint32_t rgba=gm_va(gm_calloc(1,4));args[0]=160;args[1]=120;args[2]=args[3]=1;args[4]=0x1908;args[5]=0x1401;args[6]=rgba;call("glReadPixels",7,args);
  CHECK(MEM8(rgba)==0 && MEM8(rgba+1)==255 && MEM8(rgba+2)==0 && MEM8(rgba+3)==255);CHECK(!call("glGetError",0,NULL));
+ /* Guest-owned interleaved positions/UVs and byte colors, then indexed draw. */
+ uint32_t vertices=gm_va(gm_calloc(12,4)),colors=gm_va(gm_alloc(12)),indices=gm_va(gm_alloc(6));
+ float triangle[]={-1,-1,0,0,1,-1,1,0,0,1,0.5f,1};memcpy(gm_ptr(vertices),triangle,sizeof triangle);
+ for(unsigned i=0;i<3;i++){MEM32(colors+4*i)=0xff0000ff;MEM16(indices+2*i)=2-i;}
+ args[0]=2;args[1]=0x1406;args[2]=16;args[3]=vertices;call("glVertexPointer",4,args);args[3]=vertices+8;call("glTexCoordPointer",4,args);
+ args[0]=4;args[1]=0x1401;args[2]=0;args[3]=colors;call("glColorPointer",4,args);
+ args[0]=0x8074;call("glEnableClientState",1,args);args[0]=0x8078;call("glEnableClientState",1,args);args[0]=0x8076;call("glEnableClientState",1,args);
+ args[0]=args[1]=args[2]=0;args[3]=0x3f800000;call("glClearColor",4,args);args[0]=0x4000;call("glClear",1,args);
+ args[0]=4;args[1]=0;args[2]=3;call("glDrawArrays",3,args);
+ args[0]=160;args[1]=120;args[2]=args[3]=1;args[4]=0x1908;args[5]=0x1401;args[6]=rgba;call("glReadPixels",7,args);CHECK(MEM8(rgba)==255&&!MEM8(rgba+1)&&!MEM8(rgba+2));
+ for(unsigned i=0;i<3;i++)MEM32(colors+4*i)=0xffff0000;
+ args[0]=4;args[1]=3;args[2]=0x1403;args[3]=indices;call("glDrawElements",4,args);
+ args[0]=160;args[1]=120;args[2]=args[3]=1;args[4]=0x1908;args[5]=0x1401;args[6]=rgba;call("glReadPixels",7,args);CHECK(!MEM8(rgba)&&!MEM8(rgba+1)&&MEM8(rgba+2)==255);CHECK(!call("glGetError",0,NULL));
+ args[0]=0x8074;call("glDisableClientState",1,args);args[0]=0x8078;call("glDisableClientState",1,args);args[0]=0x8076;call("glDisableClientState",1,args);
+ gm_free(gm_ptr(vertices));gm_free(gm_ptr(colors));gm_free(gm_ptr(indices));
  args[0]=0x1701;call("glMatrixMode",1,args);call("glLoadIdentity",0,NULL);
  double bounds[]={-2,2,-2,2,-1,1};memcpy(args,bounds,sizeof bounds);call("glOrtho",12,args);
  uint32_t matrix=gm_va(gm_calloc(16,4));args[0]=0x0ba7;args[1]=matrix;call("glGetFloatv",2,args);
@@ -92,6 +107,15 @@ int cs16_probe_ui(void){
   args[0]=dc;args[1]=2;args[2]=2;args[3]=gm_va(gm_strdup("CS"));args[4]=2;CHECK(call("TextOutA",5,args));
   for(unsigned i=0;i<64*32;i++)if(MEM32(MEM32(pointer)+i*4))changed[bottom]++;
   CHECK(changed[bottom]>10);
+  memset(gm_ptr(MEM32(pointer)),0,64*32*4);
+  uint32_t wide=gm_va(gm_calloc(2,2)),clip=gm_va(gm_calloc(4,4));MEM16(wide)=0x03a9;MEM32(clip)=4;MEM32(clip+4)=3;MEM32(clip+8)=12;MEM32(clip+12)=20;
+  uint32_t ext[]={dc,2,2,4,clip,wide,1,0};CHECK(call("ExtTextOutW",8,ext));unsigned ink=0;
+  for(unsigned y=0;y<32;y++)for(unsigned x=0;x<64;x++)if(MEM32(MEM32(pointer)+((bottom?31-y:y)*64+x)*4)){CHECK(x>=4&&x<12&&y>=3&&y<20);ink++;}CHECK(ink>0);
+  ext[3]=0x10;CHECK(!call("ExtTextOutW",8,ext));ext[3]=0;MEM16(wide)=0xd800;CHECK(!call("ExtTextOutW",8,ext));
+  args[0]=dc;args[1]=0x0000ff;call("SetBkColor",2,args);ext[3]=2;ext[5]=0;ext[6]=0;CHECK(call("ExtTextOutW",8,ext));
+  args[0]=dc;args[1]=5;args[2]=4;CHECK(call("GetPixel",3,args)==0x0000ff);
+  gm_free(gm_ptr(wide));gm_free(gm_ptr(clip));
+
   args[0]=dc;args[1]=old;CHECK(call("SelectObject",2,args)==bitmap);args[0]=bitmap;CHECK(call("DeleteObject",1,args));
   uint8_t *pixels;int w,h,pitch,bpp;CHECK(!hle_gdi_dib_view(bitmap,&pixels,&w,&h,&pitch,&bpp));
  }
@@ -100,7 +124,7 @@ int cs16_probe_ui(void){
  uint32_t provider=MEM32(provider_out),random=gm_va(gm_calloc(1,72));MEM32(random)=MEM32(random+68)=0xcafebabe;
  args[0]=provider;args[1]=64;args[2]=random+4;CHECK(call("CryptGenRandom",3,args));CHECK(MEM32(random)==0xcafebabe && MEM32(random+68)==0xcafebabe);
  args[0]=provider;args[1]=0;CHECK(call("CryptReleaseContext",2,args));CHECK(!call("CryptReleaseContext",2,args));
- printf("{\"uiProbe\":true,\"nativeWindowLifecycle\":true,\"classLifecycle\":true,\"openGLTriangleReadback\":true,\"openGLDoubleArguments\":true,\"randomProviderLifecycleAndBounds\":true,\"distinctSystemCursors\":true,\"abcBounds\":true,\"unicodeAbcBounds\":true,\"textMetricLayout\":true,\"fontEnumerationCallback\":true,\"mmTextCoordinateRoundtrip\":true,\"sharedDibPixels\":true,\"topDownInkPixels\":%u,\"bottomUpInkPixels\":%u}\n",changed[0],changed[1]);return 0;
+ printf("{\"uiProbe\":true,\"nativeWindowLifecycle\":true,\"classLifecycle\":true,\"openGLTriangleReadback\":true,\"guestClientArraysAndIndexedPixels\":true,\"openGLDoubleArguments\":true,\"randomProviderLifecycleAndBounds\":true,\"distinctSystemCursors\":true,\"abcBounds\":true,\"unicodeAbcBounds\":true,\"textMetricLayout\":true,\"fontEnumerationCallback\":true,\"mmTextCoordinateRoundtrip\":true,\"extUnicodeClippingAndOpaqueRect\":true,\"sharedDibPixels\":true,\"topDownInkPixels\":%u,\"bottomUpInkPixels\":%u}\n",changed[0],changed[1]);return 0;
 }
 int cs16_probe_x87(void){
  static const uint16_t controls[]={0x27f,0x37f,0xb7f,0xf7f,0x240};

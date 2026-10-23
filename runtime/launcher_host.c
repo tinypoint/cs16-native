@@ -12,13 +12,14 @@ static void fault(int sig,siginfo_t *info,void *context){
  (void)context;
  fprintf(stderr,"[cs16-boot] signal=%d address=%p guest=%08x import=%s esp=%08x\n",sig,info?info->si_addr:NULL,g_cur_func,g_cur_import?g_cur_import:"none",g_esp);
  if(getenv("CS16_CALLBACK_TRACE")){
-  void *frames[32];int count=backtrace(frames,32);backtrace_symbols_fd(frames,count,2);
+  void *frames[96];int count=backtrace(frames,96);backtrace_symbols_fd(frames,count,2);
   fprintf(stderr,"[guest-fault] eax=%08x ecx=%08x edx=%08x ebp=%08x\n",g_eax,g_ecx,g_edx,g_ebp);
   if(gm_accessible(g_esp,64,0)){fprintf(stderr,"[guest-fault] stack:");for(unsigned i=0;i<16;i++)fprintf(stderr," %08x",MEM32(g_esp+i*4));fputc('\n',stderr);}
  }
  _exit(128+sig);
 }
-static void timeout(int sig){(void)sig;fprintf(stderr,"[cs16-boot] watchdog guest=%08x import=%s\n",g_cur_func,g_cur_import?g_cur_import:"none");_exit(124);}
+extern uint32_t cs16_presented_frames;
+static void timeout(int sig){(void)sig;fprintf(stderr,"[cs16-boot] watchdog guest=%08x import=%s presentedFrames=%u\n",g_cur_func,g_cur_import?g_cur_import:"none",cs16_presented_frames);_exit(124);}
 void recomp_not_lifted(uint32_t va){hle_fatal("untranslated function %08x",va);}
 extern const win32hle_shim win32hle_path_extra[];
 extern const win32hle_shim win32hle_version[];
@@ -33,7 +34,7 @@ extern int cs16_probe_audio(void);
 extern int cs16_probe_network(void);
 extern void cs16_opengl_register(void);
 extern void cs16_webbrowser_install(void);
-extern const win32hle_shim win32hle_crypto_random[];
+extern const win32hle_shim win32hle_crypto_random[],win32hle_iphlpapi[];
 static void messagebox(void){
  fprintf(stderr,"[cs16-boot] original dialog title=%s text=%s flags=%08x\n",ASTR(2)?ASTR(2):"",ASTR(1)?ASTR(1):"",A32(3));
  hle_fatal("Original program requested a dialog; diagnostic host stops here");
@@ -101,10 +102,10 @@ int main(int argc,char **argv){
  cs16_native_window_install();
  cs16_opengl_register();
  cs16_webbrowser_install();
- win32hle_register(win32hle_crypto_random);
+ win32hle_register(win32hle_crypto_random);win32hle_register(win32hle_iphlpapi);
  static const win32hle_shim diagnostics[]={{"MessageBoxA",messagebox},{0,0}};win32hle_register(diagnostics);
  char directory[4096];if(!getcwd(directory,sizeof directory))return 2;
- hle_set_drive('C',directory);hle_set_command_line("hl.exe -game cstrike -console -windowed");
+ hle_set_drive('C',directory);hle_set_command_line(getenv("CS16_CONSOLE")?"hl.exe -game cstrike -console -windowed":"hl.exe -game cstrike -windowed");
  pe_image image={0};if(recomp_pe_map(argv[1],&image))return 3;
  char guest[4096];hle_guest_path(argv[1],guest,sizeof guest);
  hle_module_add(guest,image.base,image.resource_rva,image.resource_size,1);

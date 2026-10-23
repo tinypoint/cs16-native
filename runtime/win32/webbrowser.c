@@ -31,7 +31,7 @@ static const uint8_t ids[INTERFACES][16]={
 static const uint8_t events_iid[16]={0xa0,0x15,0xa7,0x34,0x87,0x65,0xd0,0x11,0x92,0x4a,0,0x20,0xaf,0xc7,0xac,0x4d};
 typedef struct {
  uint32_t object,refs,site,sink,view_sink,view_flags,view_aspect,cookie,hwnd;
- int left,top,width,height,visible,silent,initialized,active,loaded;
+ int left,top,width,height,visible,silent,initialized,active,loaded,view_dirty;
  void *native;char url[8192];
 } browser_t;
 static browser_t browsers[MAX_BROWSERS];
@@ -78,7 +78,7 @@ static void set_site(void){browser_t *b=self();replace_ref(&b->site,A32(1));RET(
 static void get_site(void){browser_t *b=self();if(!gm_accessible(A32(1),4,1))RET(E_POINTER,2);MEM32(A32(1))=b->site;if(b->site)vcall(b->site,1,0,NULL);RET(S_OK,2);}
 static void get_misc(void){self();if(A32(1)!=1)RET(E_INVALIDARG,3);if(!gm_accessible(A32(2),4,1))RET(E_POINTER,3);MEM32(A32(2))=0x20000;RET(S_OK,3);}
 static void get_class(void){self();if(!gm_accessible(A32(1),16,1))RET(E_POINTER,2);memcpy(APTR(1),clsid,16);RET(S_OK,2);}
-static int resize(browser_t *b,int w,int h){if(w<1||h<1||w>4096||h>4096)return 0;if(!cs16_browser_native_resize(b->native,w,h))return 0;b->width=w;b->height=h;return 1;}
+static int resize(browser_t *b,int w,int h){if(w<1||h<1||w>4096||h>4096)return 0;if(b->width==w&&b->height==h)return 1;if(!cs16_browser_native_resize(b->native,w,h))return 0;b->width=w;b->height=h;return 1;}
 static void view_notify(browser_t *b){if(b->view_sink){uint32_t args[]={b->view_aspect,(uint32_t)-1};vcall(b->view_sink,4,2,args);if(b->view_flags&4)replace_ref(&b->view_sink,0);}}
 static void set_advise(void){browser_t *b=self();if(A32(1)!=1 || (A32(2)&~6u))RET(E_INVALIDARG,4);replace_ref(&b->view_sink,A32(3));b->view_aspect=A32(1);b->view_flags=A32(2);if(b->view_flags&2)view_notify(b);RET(S_OK,4);}
 static void get_advise(void){browser_t *b=self();for(unsigned i=1;i<4;i++)if(A32(i)&&!gm_accessible(A32(i),4,1))RET(E_POINTER,4);if(A32(1))MEM32(A32(1))=b->view_aspect;if(A32(2))MEM32(A32(2))=b->view_flags;if(A32(3)){MEM32(A32(3))=b->view_sink;if(b->view_sink)vcall(b->view_sink,1,0,NULL);}RET(S_OK,4);}
@@ -132,10 +132,10 @@ static void get_document(void){browser_t *b=self();if(!gm_accessible(A32(1),4,1)
 static void get_body(void){browser_t *b=self();if(!gm_accessible(A32(1),4,1))RET(E_POINTER,2);MEM32(A32(1))=0;char result[32];if(!cs16_browser_native_script(b->native,"!!document.body",result,sizeof result))RET(E_FAIL,2);if(strcmp(result,"1")&&strcmp(result,"true"))RET(S_OK,2);MEM32(A32(1))=iface(b,ELEMENT);b->refs++;RET(S_OK,2);}
 static void scroll_property(void){
  browser_t *b=self();const char *method=strrchr(g_cur_import,'.')+1;const char *field=strstr(method,"Left")?"scrollLeft":strstr(method,"Top")?"scrollTop":strstr(method,"Width")?"scrollWidth":"scrollHeight";char script[256],result[64];
- if(!strncmp(method,"put_",4))snprintf(script,sizeof script,"document.scrollingElement.%s=%d",field,(int32_t)A32(1));
+ if(!strncmp(method,"put_",4))snprintf(script,sizeof script,"(()=>{const e=document.scrollingElement,old=e.%s;e.%s=%d;return e.%s!==old})()",field,field,(int32_t)A32(1),field);
  else {if(!gm_accessible(A32(1),4,1))RET(E_POINTER,2);snprintf(script,sizeof script,"document.scrollingElement.%s",field);}
  if(!cs16_browser_native_script(b->native,script,result,sizeof result))RET(E_FAIL,2);
- if(!strncmp(method,"get_",4))MEM32(A32(1))=(uint32_t)strtol(result,NULL,10);else view_notify(b);RET(S_OK,2);
+ if(!strncmp(method,"get_",4))MEM32(A32(1))=(uint32_t)strtol(result,NULL,10);else if(!strcmp(result,"1")||!strcmp(result,"true"))b->view_dirty=1;RET(S_OK,2);
 }
 static void typeinfo_count(void){self();if(!gm_accessible(A32(1),4,1))RET(E_POINTER,2);MEM32(A32(1))=0;RET(S_OK,2);}
 static void property(void){
@@ -164,7 +164,8 @@ static void event(browser_t *b,uint32_t dispid){
  uint32_t args[]={dispid,data+80,0,1,data+48,0,0,0};uint32_t sink=b->sink;vcall(sink,1,0,NULL);vcall(sink,6,8,args);vcall(sink,2,0,NULL);gm_free(gm_ptr(url-4));gm_free(gm_ptr(data));
 }
 void cs16_webbrowser_pump(void){
- cs16_browser_native_pump();for(unsigned i=0;i<MAX_BROWSERS;i++){browser_t *b=&browsers[i];if(!b->object)continue;unsigned flags=cs16_browser_native_events(b->native);if(!flags)continue;b->refs++;
+ cs16_browser_native_pump();for(unsigned i=0;i<MAX_BROWSERS;i++){browser_t *b=&browsers[i];if(!b->object)continue;unsigned flags=cs16_browser_native_events(b->native);if(!flags&&!b->view_dirty)continue;b->refs++;int dirty=b->view_dirty;b->view_dirty=0;
+ if(dirty&&!(flags&1))view_notify(b);
  if(flags&1){b->loaded=1;fprintf(stderr,"[webbrowser] navigation completed\n");view_notify(b);event(b,252);event(b,259);}
  if(flags&2)fprintf(stderr,"[webbrowser] navigation error (no completion event)\n");release(b);}
 }
@@ -209,9 +210,10 @@ void cs16_webbrowser_install(void){build_tables();hle_com_register_class(clsid,c
 #include <time.h>
 static unsigned probe_references=1,probe_views,probe_documents,probe_navigations;
 static int probe_callback_error;
+static uint32_t probe_scroll_object;
 static void probe_addref(void){RET(++probe_references,1);}
 static void probe_release(void){if(probe_references<2)probe_callback_error=1;RET(--probe_references,1);}
-static void probe_view(void){if(A32(1)!=1||(int32_t)A32(2)!=-1)probe_callback_error=1;probe_views++;RET(0,3);}
+static void probe_view(void){if(A32(1)!=1||(int32_t)A32(2)!=-1)probe_callback_error=1;probe_views++;if(probe_scroll_object){uint32_t scroll=25;if(vcall(probe_scroll_object,10,1,&scroll))probe_callback_error=1;}RET(0,3);}
 static void probe_invoke(void){
  uint32_t params=A32(5);if(!gm_accessible(params,16,0)||MEM32(params+8)!=2)probe_callback_error=1;
  else {uint32_t args=MEM32(params);if(!gm_accessible(args,32,0)||MEM16(args)!=0x400c||MEM16(args+16)!=9)probe_callback_error=1;}
@@ -245,7 +247,7 @@ int cs16_probe_browser(void){
  uint32_t url_bstr=ascii_bstr(url),nav[]={url_bstr,0,0,0,0};B_CHECK(!vcall(iface(b,BROWSER),11,5,nav));B_CHECK(wait_loaded(b));B_CHECK(probe_navigations==1&&probe_documents==1&&!probe_callback_error);
  char title[128];B_CHECK(cs16_browser_native_script(b->native,"document.title",title,sizeof title));B_CHECK(!strcmp(title,"CS16 WebKit probe"));
  B_CHECK(!vcall(iface(b,DOCUMENT),9,1,docout));uint32_t body=MEM32(out);qi[0]=ids_guest+TEXT*16;B_CHECK(!vcall(body,0,2,qi));uint32_t text=MEM32(out);vcall(body,2,0,NULL);
- uint32_t scrolling[]={25};B_CHECK(!vcall(text,10,1,scrolling));scrolling[0]=out;B_CHECK(!vcall(text,11,1,scrolling)&&MEM32(out)==25);scrolling[0]=0;B_CHECK(!vcall(text,10,1,scrolling));vcall(text,2,0,NULL);
+ uint32_t scrolling[]={25};unsigned before=probe_views;probe_scroll_object=text;B_CHECK(!vcall(text,10,1,scrolling));B_CHECK(probe_views==before);cs16_webbrowser_pump();B_CHECK(probe_views==before+1&&!probe_callback_error);cs16_webbrowser_pump();B_CHECK(probe_views==before+1);probe_scroll_object=0;scrolling[0]=out;B_CHECK(!vcall(text,11,1,scrolling)&&MEM32(out)==25);scrolling[0]=0;B_CHECK(!vcall(text,10,1,scrolling));vcall(text,2,0,NULL);
  uint32_t null_dc=0;uint32_t dc=system_call("CreateCompatibleDC",1,&null_dc);B_CHECK(dc);uint32_t bmi=gm_va(gm_calloc(1,40)),bits=gm_va(gm_calloc(1,4));MEM32(bmi)=40;MEM32(bmi+4)=160;MEM32(bmi+8)=(uint32_t)-120;MEM16(bmi+12)=1;MEM16(bmi+14)=32;
  uint32_t make[]={dc,bmi,0,bits,0,0};uint32_t dib=system_call("CreateDIBSection",6,make);B_CHECK(dib&&MEM32(bits));uint32_t sel[]={dc,dib};uint32_t old=system_call("SelectObject",2,sel);
  uint32_t draw_args[]={1,(uint32_t)-1,0,0,0,dc,rect,0,0,0};B_CHECK(!vcall(iface(b,VIEW),3,10,draw_args));
@@ -255,5 +257,5 @@ int cs16_probe_browser(void){
  B_CHECK(!vcall(cp,6,1,&cookie));B_CHECK(vcall(cp,6,1,&cookie)==0x80040200u);vcall(cp,2,0,NULL);advise[1]=0;advise[2]=0;B_CHECK(!vcall(iface(b,VIEW),7,3,advise));B_CHECK(probe_references==1);
  B_CHECK(vcall(root,2,0,NULL)==0);for(unsigned i=0;i<MAX_BROWSERS;i++)B_CHECK(!browsers[i].object);
  gm_free(gm_ptr(url_bstr-4));gm_free(gm_ptr(sink));unlink(path);rmdir(directory);
- printf("{\"browserProbe\":true,\"systemWebKit\":true,\"comIdentityAndReferences\":true,\"unknownInterfaceRejected\":true,\"realLocalDocumentLoaded\":true,\"domTitleVerified\":true,\"domScrollRoundtrip\":true,\"nativeNavigationEvents\":true,\"viewAdviseLifecycle\":true,\"topDownDibPixels\":true,\"topPixel\":%u,\"bottomPixel\":%u,\"objectsReleased\":true}\n",top,bottom);return 0;
+ printf("{\"browserProbe\":true,\"systemWebKit\":true,\"comIdentityAndReferences\":true,\"unknownInterfaceRejected\":true,\"realLocalDocumentLoaded\":true,\"domTitleVerified\":true,\"domScrollRoundtrip\":true,\"scrollNotificationsDeferredAndIdempotent\":true,\"nativeNavigationEvents\":true,\"viewAdviseLifecycle\":true,\"topDownDibPixels\":true,\"topPixel\":%u,\"bottomPixel\":%u,\"objectsReleased\":true}\n",top,bottom);return 0;
 }

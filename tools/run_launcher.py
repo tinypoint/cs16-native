@@ -60,6 +60,7 @@ def main():
     record['originalExceptionContinuations']=re.findall(r'\[guest-eh\] resume=(.*)',text)
     record['createdOpenGLContext']='native context created' in text
     record['presentedOpenGLBuffer']='first guest buffer swap' in text
+    counts=re.findall(r'presentedFrames=(\d+)',text);record['presentedFramesAtWatchdog']=int(counts[-1]) if counts else None
     if args.probe_filesystem:
         for line in text.splitlines():
             if line.startswith('{"originalFilesystemProbe"'):record['filesystemProbe']=json.loads(line)

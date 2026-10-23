@@ -39,6 +39,7 @@ uint32_t  g_fs_base, g_gs_base;
 ptrdiff_t g_mem_base = 0;
 uint32_t  g_cur_func;
 const char *g_cur_import;
+static uint32_t g_last_import_va;
 uint32_t  g_icall_trace[ICALL_TRACE_SIZE], g_icall_from[ICALL_TRACE_SIZE];
 uint32_t  g_icall_trace_idx, g_icall_count;
 
@@ -85,11 +86,13 @@ typedef struct {
     uint64_t mm[8];
     xmm_t xmm[8];
     uint32_t mxcsr, gs, flag_k, flag_a, flag_b, flag_cf;
-    uint32_t x87_environment[4];
+    uint32_t x87_environment[4],import_va;
+    const char *import_name;
 } regs_t;
 
 static void regs_save(regs_t *r) {
     cs16_x87_snapshot(r->x87_environment);
+    r->import_name=g_cur_import;r->import_va=g_last_import_va;
     r->eax=g_eax; r->ecx=g_ecx; r->edx=g_edx; r->esp=g_esp;
     r->ebx=g_ebx; r->esi=g_esi; r->edi=g_edi; r->ebp=g_ebp;
     r->fs=g_fs_base; r->cur=g_cur_func;
@@ -101,6 +104,7 @@ static void regs_save(regs_t *r) {
 }
 static void regs_load(const regs_t *r) {
     cs16_x87_restore(r->x87_environment);
+    g_cur_import=r->import_name;g_last_import_va=r->import_va;
     g_eax=r->eax; g_ecx=r->ecx; g_edx=r->edx; g_esp=r->esp;
     g_ebx=r->ebx; g_esi=r->esi; g_edi=r->edi; g_ebp=r->ebp;
     g_fs_base=r->fs; g_cur_func=r->cur;
@@ -238,8 +242,6 @@ const char *hle_name(uint32_t va) {
 
 /* The shim VA last dispatched, so the unimplemented-import stub can name itself
  * (its fn is shared, so it learns which import it is from here). */
-static uint32_t g_last_import_va;
-
 /* An import VA that is one of our synthetic shim VAs resolves to its shim,
  * entered through shim_entry: the lookup and the call are back to back on the
  * thread that holds the machine, so the index passes through a global. */
@@ -247,14 +249,18 @@ static volatile uint32_t g_pending_shim;
 static void shim_entry(void) {
     uint32_t i = g_pending_shim;
     if (g_waiters) hle_yield();
+    /* Yield may run another guest thread and overwrite lookup diagnostics.
+     * Shared COM handlers dispatch by this identity, so publish it only after
+     * this thread has reacquired the guest machine. */
+    const char *previous_name=g_cur_import;uint32_t previous_va=g_last_import_va;
+    g_cur_import=g_shim[i].name;g_last_import_va=g_shim[i].va;
     g_shim[i].fn();
+    g_cur_import=previous_name;g_last_import_va=previous_va;
 }
 recomp_func_t recomp_lookup_import(uint32_t va) {
     if (va < SHIM_BASE || va >= SHIM_BASE + SHIM_STEP * (uint32_t)g_shim_n) return NULL;
     uint32_t i = (va - SHIM_BASE) / SHIM_STEP;
     if (i < (uint32_t)g_shim_n && g_shim[i].va == va) {
-        g_last_import_va = va;
-        g_cur_import = g_shim[i].name;
         if (win32hle_trace) fprintf(stderr, "[hle] %s\n", g_shim[i].name);
         g_pending_shim = i;
         return shim_entry;

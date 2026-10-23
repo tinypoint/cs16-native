@@ -125,6 +125,13 @@ static void w_socket(void) {                             /* (af, type, protocol)
     else g_ipx[fd >> 3] &= (uint8_t)~(1 << (fd & 7));
     RET(SOCK_BASE + (uint32_t)fd, 3);
 }
+/* Creation with the ordinary/overlapped-capable socket flag; completion
+ * ports and overlapped transfer APIs remain unsupported separately. */
+static void w_WSASocket(void){
+ if(A32(3)||A32(4)||(A32(5)&~1u)){g_wsa_error=10045;RET(INVALID_SOCKET,6);}
+ uint32_t args[]={A32(0),A32(1),A32(2)};
+ uint32_t result=hle_call_guest(hle_resolve("socket"),3,args);RET(result,6);
+}
 static void w_closesocket(void) {
     int fd = fd_of(A32(0));
     if (fd < 0 || close(fd) != 0) { g_wsa_error = WSAENOTSOCK; RET(SOCKET_ERROR, 1); }
@@ -345,6 +352,7 @@ static void w_EnumProtocolsA(void) {
 
 #define SHIM2(ord, name, fn) { "wsock32.dll#" #ord, fn }, { name, fn }
 const win32hle_shim win32hle_wsock32[] = {
+    {"WSASocketA", w_WSASocket}, {"WSASocketW", w_WSASocket},
     SHIM2(1111, "EnumProtocolsA", w_EnumProtocolsA),
     SHIM2(2, "bind", w_bind),
     SHIM2(3, "closesocket", w_closesocket),
@@ -382,12 +390,14 @@ const win32hle_shim win32hle_wsock32[] = {
 /* Loopback-only transport check, including both DLLs' ordinal ABI. */
 #define N_CHECK(c) do{if(!(c)){fprintf(stderr,"[network-probe] failed line %d: %s\n",__LINE__,#c);return 15;}}while(0)
 static uint32_t ncall(const char *symbol,unsigned count,uint32_t *args){return hle_call_guest(hle_resolve(symbol),(int)count,args);}
+extern int cs16_probe_adapters(void);
 int cs16_probe_network(void){
+ N_CHECK(!cs16_probe_adapters());
  uint32_t mods[2],arg;
  for(unsigned i=0;i<2;i++){arg=gm_va(gm_strdup(i?"ws2_32.dll":"wsock32.dll"));mods[i]=ncall("LoadLibraryA",1,&arg);N_CHECK(mods[i]);}
  static const struct {uint32_t ordinal;const char *name;} lookups[]={{7,"getsockopt"},{10,"ioctlsocket"},{11,"inet_addr"},{12,"inet_ntoa"},{18,"select"},{22,"shutdown"},{23,"socket"},{151,"__WSAFDIsSet"}};
  for(unsigned m=0;m<2;m++)for(unsigned i=0;i<sizeof lookups/sizeof *lookups;i++){uint32_t number=lookups[i].ordinal;if(!m&&number>=10&&number<=12)number=number==10?12:number-1;uint32_t q[]={mods[m],number};uint32_t ordinal=ncall("GetProcAddress",2,q);q[1]=gm_va(gm_strdup(lookups[i].name));N_CHECK(ordinal&&ordinal==ncall("GetProcAddress",2,q));}
- uint32_t make[]={2,2,17};uint32_t send_socket=ncall("socket",3,make),receive_socket=ncall("socket",3,make);N_CHECK(send_socket!=INVALID_SOCKET&&receive_socket!=INVALID_SOCKET);
+ uint32_t make[]={2,2,17};uint32_t extended[]={2,2,17,0,0,1};uint32_t send_socket=ncall("WSASocketA",6,extended),receive_socket=ncall("socket",3,make);N_CHECK(send_socket!=INVALID_SOCKET&&receive_socket!=INVALID_SOCKET);
  uint32_t addr=gm_va(gm_calloc(1,16));MEM16(addr)=2;MEM8(addr+4)=127;MEM8(addr+7)=1;uint32_t bind_args[]={receive_socket,addr,16};N_CHECK(!ncall("bind",3,bind_args));uint32_t size=gm_va(gm_calloc(1,4));MEM32(size)=16;uint32_t get[]={receive_socket,addr,size};N_CHECK(!ncall("getsockname",3,get)&&MEM16(addr+2));
  /* Invoke the resolved stdcall entry directly: hle_call_guest restores ESP,
   * which alone would hide an incorrect ordinal's argument cleanup. */
@@ -404,5 +414,5 @@ int cs16_probe_network(void){
  uint32_t contains[]={receive_socket,fdset};N_CHECK(ncall("__WSAFDIsSet",2,contains));uint32_t bytes=gm_va(gm_calloc(1,20));MEM32(bytes)=MEM32(bytes+16)=0xcafebabe;uint32_t read_args[]={receive_socket,bytes+4,12,0,0,0};N_CHECK(ncall("recvfrom",6,read_args)==6&&!memcmp(gm_ptr(bytes+4),"CS16!",6)&&MEM32(bytes)==0xcafebabe&&MEM32(bytes+16)==0xcafebabe);
  MEM32(fdset)=1;MEM32(timeout)=0;N_CHECK(!ncall("select",5,poll_args)&&!MEM32(fdset));
  uint32_t option=gm_va(gm_calloc(1,4));uint32_t opt_args[]={receive_socket,0xffff,0xdead,option,4};N_CHECK(ncall("setsockopt",5,opt_args)==SOCKET_ERROR&&ncall("WSAGetLastError",0,NULL)==10042);
- N_CHECK(!ncall("closesocket",1,&send_socket)&&!ncall("closesocket",1,&receive_socket));printf("{\"networkProbe\":true,\"loopbackOnly\":true,\"bothDllOrdinalAliases\":true,\"nameOrdinalIdentity\":true,\"stdcallStackCleanup\":true,\"udpPayloadRoundtrip\":true,\"windowsFdSetLayout\":true,\"timeoutPreserved\":true,\"unsupportedOptionRejected\":true,\"bufferBounds\":true}\n");return 0;
+ N_CHECK(!ncall("closesocket",1,&send_socket)&&!ncall("closesocket",1,&receive_socket));printf("{\"networkProbe\":true,\"adapterSnapshotBoundsAndHostMatch\":true,\"loopbackOnly\":true,\"bothDllOrdinalAliases\":true,\"nameOrdinalIdentity\":true,\"stdcallStackCleanup\":true,\"udpPayloadRoundtrip\":true,\"windowsFdSetLayout\":true,\"timeoutPreserved\":true,\"unsupportedOptionRejected\":true,\"bufferBounds\":true}\n");return 0;
 }

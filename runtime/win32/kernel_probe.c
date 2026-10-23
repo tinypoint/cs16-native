@@ -11,7 +11,13 @@ static void worker(void){
  uint32_t out=gm_va(gm_calloc(1,4)),a[]={UINT32_MAX,0xfffffffeu,UINT32_MAX,out,0,0,2};
  if(!call("DuplicateHandle",7,a))hle_fatal("worker thread pseudo-handle duplicate failed");worker_thread_handle=MEM32(out);gm_free(gm_ptr(out));RET(0xc516,1);
 }
-static const win32hle_shim methods[]={{"KernelProbe.Worker",worker},{0,0}};
+static void import_identity(void){
+ if(!g_cur_import||strcmp(g_cur_import,"KernelProbe.ImportIdentity"))hle_fatal("Wrong entry import identity");
+ call("GetTickCount",0,NULL);
+ if(!g_cur_import||strcmp(g_cur_import,"KernelProbe.ImportIdentity"))hle_fatal("Nested import lost outer identity");
+ RET(1,0);
+}
+static const win32hle_shim methods[]={{"KernelProbe.Worker",worker},{"KernelProbe.ImportIdentity",import_identity},{0,0}};
 int cs16_probe_kernel(void){
  uint32_t out=gm_va(gm_calloc(1,4)),a[8]={0};
  a[1]=1;uint32_t event=call("CreateEventA",4,a);K_CHECK(event);
@@ -20,7 +26,7 @@ int cs16_probe_kernel(void){
  memset(a,0,sizeof a);event=call("CreateEventA",4,a);dup[1]=event;dup[6]=3;K_CHECK(call("DuplicateHandle",7,dup));copy=MEM32(out);K_CHECK(!call("SetEvent",1,&event));K_CHECK(call("CloseHandle",1,&copy));
  dup[1]=0xfffffffeu;dup[6]=2;K_CHECK(call("DuplicateHandle",7,dup));copy=MEM32(out);a[0]=copy;a[1]=0;K_CHECK(call("WaitForSingleObject",2,a)==258);K_CHECK(call("CloseHandle",1,&copy));
  dup[1]=0xdeadbeef;K_CHECK(!call("DuplicateHandle",7,dup));K_CHECK(call("GetLastError",0,NULL)==6);
- win32hle_register(methods);memset(a,0,sizeof a);a[2]=hle_resolve("KernelProbe.Worker");a[4]=4;uint32_t thread=call("CreateThread",6,a);K_CHECK(thread);
+ win32hle_register(methods);K_CHECK(call("KernelProbe.ImportIdentity",0,NULL));memset(a,0,sizeof a);a[2]=hle_resolve("KernelProbe.Worker");a[4]=4;uint32_t thread=call("CreateThread",6,a);K_CHECK(thread);
  dup[1]=thread;K_CHECK(call("DuplicateHandle",7,dup));copy=MEM32(out);K_CHECK(call("CloseHandle",1,&thread));K_CHECK(call("ResumeThread",1,&copy)==1);
  a[0]=copy;a[1]=3000;K_CHECK(call("WaitForSingleObject",2,a)==0);a[1]=out;K_CHECK(call("GetExitCodeThread",2,a)&&MEM32(out)==0xc516);
  a[0]=worker_thread_handle;a[1]=out;K_CHECK(call("GetExitCodeThread",2,a)&&MEM32(out)==0xc516);K_CHECK(call("CloseHandle",1,&copy));K_CHECK(call("CloseHandle",1,&worker_thread_handle));
@@ -37,5 +43,5 @@ int cs16_probe_kernel(void){
  profile[4]=5;K_CHECK(call("GetPrivateProfileStringA",6,profile)==3&&!memcmp(gm_ptr(buf+4),"Aud\0\0",5));
  profile[0]=gm_va(gm_strdup("NoSuchSection-CS16-Probe"));profile[1]=gm_va(gm_strdup("missing"));profile[4]=1;K_CHECK(!call("GetProfileStringA",5,profile)&&!MEM8(buf+4));
  profile[4]=0;MEM8(buf+4)=0x51;K_CHECK(!call("GetProfileStringA",5,profile)&&MEM8(buf+4)==0x51);K_CHECK(MEM32(buf)==0xcafebabe&&MEM32(buf+76)==0xcafebabe);unlink(file);
- printf("{\"kernelProbe\":true,\"duplicateSharesObject\":true,\"independentClose\":true,\"closeSource\":true,\"pseudoThreadConverted\":true,\"workerThreadIdentityAndExit\":true,\"invalidHandleRejected\":true,\"profileCaseInsensitive\":true,\"profileEnumeration\":true,\"profileTruncationBounds\":true,\"zeroLengthOutputUntouched\":true,\"moduleRegistryBeyond32\":true,\"unicodeModuleNames\":true,\"recursiveCriticalSection\":true}\n");return 0;
+ printf("{\"kernelProbe\":true,\"nestedImportIdentity\":true,\"duplicateSharesObject\":true,\"independentClose\":true,\"closeSource\":true,\"pseudoThreadConverted\":true,\"workerThreadIdentityAndExit\":true,\"invalidHandleRejected\":true,\"profileCaseInsensitive\":true,\"profileEnumeration\":true,\"profileTruncationBounds\":true,\"zeroLengthOutputUntouched\":true,\"moduleRegistryBeyond32\":true,\"unicodeModuleNames\":true,\"recursiveCriticalSection\":true}\n");return 0;
 }

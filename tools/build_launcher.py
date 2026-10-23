@@ -58,7 +58,7 @@ def main():
             try:objects.append(f.result())
             except Exception as e:errors.append(str(e));print(str(e),flush=True)
     if errors:raise SystemExit(1)
-    p=subprocess.run(['/usr/bin/clang','-arch','arm64',*map(str,objects),'-F',str(frameworks),'-framework','SDL2','-framework','SDL2_ttf','-framework','OpenGL','-framework','Cocoa','-framework','WebKit','-Wl,-rpath,'+str(frameworks),'-o',str(OUT/'cs16-original-launcher')],capture_output=True,text=True,timeout=60)
+    p=subprocess.run(['/usr/bin/clang','-arch','arm64',*map(str,objects),'-F',str(frameworks),'-framework','SDL2','-framework','SDL2_ttf','-framework','OpenGL','-framework','Cocoa','-framework','WebKit','-framework','SystemConfiguration','-framework','CoreFoundation','-Wl,-rpath,'+str(frameworks),'-o',str(OUT/'cs16-original-launcher')],capture_output=True,text=True,timeout=60)
     (OUT/'link.log').write_text(p.stdout+p.stderr)
     if p.returncode:raise SystemExit(p.stderr[-3000:])
     print('Original launcher ARM64 host built:',round(time.monotonic()-start,2),'seconds')

@@ -4,12 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include "win32hle.h"
 extern SDL_Window *cs16_native_window(uint32_t);
 extern uint32_t cs16_dc_window(uint32_t);
 extern void cs16_native_pump(void);
 static SDL_GLContext context;
 static uint32_t context_dc;
+uint32_t cs16_presented_frames;
 #define CONTEXT_HANDLE 0x0C610001u
 static void gl_require(void){if(!context || SDL_GL_GetCurrentContext()!=context)hle_fatal("OpenGL call without a current guest context");}
 static void gl_buffer(uint32_t va,size_t size,int write){if(size>UINT32_MAX || !gm_accessible(va,(uint32_t)size,write))hle_fatal("OpenGL guest buffer unavailable: %08x bytes=%zu",va,size);}
@@ -51,11 +53,13 @@ static void capture_frame(SDL_Window *window){
  glReadBuffer(read_buffer);glPixelStorei(GL_PACK_ALIGNMENT,alignment);glPixelStorei(GL_PACK_ROW_LENGTH,row_length);glPixelStorei(GL_PACK_SKIP_ROWS,skip_rows);glPixelStorei(GL_PACK_SKIP_PIXELS,skip_pixels);
  for(int y=0;y<h;y++)memcpy(flipped+(size_t)y*w*4,pixels+(size_t)(h-1-y)*w*4,(size_t)w*4);
  SDL_Surface *surface=SDL_CreateRGBSurfaceWithFormatFrom(flipped,w,h,32,w*4,SDL_PIXELFORMAT_RGBA32);
- if(surface){if(!SDL_SaveBMP(surface,path))fprintf(stderr,"[opengl] captured first buffer %dx%d\n",w,h);SDL_FreeSurface(surface);}free(pixels);free(flipped);
+ if(surface){if(!SDL_SaveBMP(surface,path))fprintf(stderr,"[opengl] captured guest buffer #%u %dx%d\n",cs16_presented_frames,w,h);SDL_FreeSurface(surface);}free(pixels);free(flipped);
 }
 static void swap_buffers(void){
  gl_require();SDL_Window *window=cs16_native_window(cs16_dc_window(A32(0)));if(!window)RET(0,1);
- static unsigned frames;if(!frames++){capture_frame(window);fprintf(stderr,"[opengl] first guest buffer swap\n");}SDL_GL_SwapWindow(window);cs16_native_pump();RET(1,1);
+ static unsigned capture_number;
+ if(!capture_number){const char *setting=getenv("CS16_CAPTURE_FRAME");char *end=NULL;unsigned long n=setting?strtoul(setting,&end,10):1;if(!n||n>10000||(setting&&(!end||*end)))hle_fatal("Invalid capture frame number");capture_number=(unsigned)n;}
+ cs16_presented_frames++;if(cs16_presented_frames==capture_number)capture_frame(window);if(cs16_presented_frames==1)fprintf(stderr,"[opengl] first guest buffer swap\n");SDL_GL_SwapWindow(window);cs16_native_pump();RET(1,1);
 }
 static void get_error(void){gl_require();RET(glGetError(),0);}
 static void get_string(void){
@@ -87,7 +91,42 @@ static void tex_sub_image(void){gl_require();gl_buffer(A32(8),pixel_bytes(A32(4)
 static void read_pixels(void){gl_require();gl_buffer(A32(6),pixel_bytes(A32(2),A32(3),A32(4),A32(5),1),1);glReadPixels(A32(0),A32(1),A32(2),A32(3),A32(4),A32(5),gm_ptr(A32(6)));RET(0,7);}
 static void load_matrix(void){gl_require();gl_buffer(A32(0),64,0);glLoadMatrixf(gm_ptr(A32(0)));RET(0,1);}
 static void mult_matrix(void){gl_require();gl_buffer(A32(0),64,0);glMultMatrixf(gm_ptr(A32(0)));RET(0,1);}
+/* Client-array addresses remain guest-owned. Validate the complete referenced
+ * span at draw time, when count/indices are known. VBO offsets are unsupported. */
+static unsigned scalar_bytes(GLenum type){switch(type){case GL_BYTE:case GL_UNSIGNED_BYTE:return 1;case GL_SHORT:case GL_UNSIGNED_SHORT:return 2;case GL_INT:case GL_UNSIGNED_INT:case GL_FLOAT:return 4;case GL_DOUBLE:return 8;default:return 0;}}
+static void client_pointer(unsigned which){
+ gl_require();GLint bound=0;glGetIntegerv(GL_ARRAY_BUFFER_BINDING,&bound);if(bound)hle_fatal("GL client pointer with VBO is not implemented");
+ int normal=which==3;GLint size=normal?3:(GLint)A32(0);GLenum type=A32(normal?0:1);GLsizei stride=(GLsizei)A32(normal?1:2);uint32_t address=A32(normal?2:3);
+ if(!scalar_bytes(type)||size<1||size>4||stride<0)hle_fatal("Invalid or unsupported GL client array format");
+ if(address)gl_buffer(address,size*scalar_bytes(type),0);void *pointer=address?gm_ptr(address):NULL;
+ switch(which){case 0:glVertexPointer(size,type,stride,pointer);break;case 1:glTexCoordPointer(size,type,stride,pointer);break;case 2:glColorPointer(size,type,stride,pointer);break;case 3:glNormalPointer(type,stride,pointer);break;}
+ RET(0,normal?3:4);
+}
+static void vertex_pointer(void){client_pointer(0);}static void texcoord_pointer(void){client_pointer(1);}static void color_pointer(void){client_pointer(2);}static void normal_pointer(void){client_pointer(3);}
+static void validate_array(GLenum enabled,GLenum size_name,GLenum type_name,GLenum stride_name,GLenum pointer_name,GLenum buffer_name,uint32_t highest){
+ if(!glIsEnabled(enabled))return;GLint size=3,type,stride,bound;void *p=NULL;
+ if(size_name)glGetIntegerv(size_name,&size);glGetIntegerv(type_name,&type);glGetIntegerv(stride_name,&stride);glGetIntegerv(buffer_name,&bound);glGetPointerv(pointer_name,&p);
+ unsigned bytes=scalar_bytes(type);uint64_t width=(uint64_t)size*bytes,span=(uint64_t)highest*(stride?stride:width)+width;uint32_t address=p?gm_va(p):0;
+ if(bound||!p||gm_ptr(address)!=p||size<1||size>4||!bytes||stride<0||span>UINT32_MAX)hle_fatal("GL client array span invalid or VBO unsupported");gl_buffer(address,(size_t)span,0);
+}
+static void validate_arrays(uint32_t highest){
+ validate_array(GL_VERTEX_ARRAY,GL_VERTEX_ARRAY_SIZE,GL_VERTEX_ARRAY_TYPE,GL_VERTEX_ARRAY_STRIDE,GL_VERTEX_ARRAY_POINTER,GL_VERTEX_ARRAY_BUFFER_BINDING,highest);
+ validate_array(GL_COLOR_ARRAY,GL_COLOR_ARRAY_SIZE,GL_COLOR_ARRAY_TYPE,GL_COLOR_ARRAY_STRIDE,GL_COLOR_ARRAY_POINTER,GL_COLOR_ARRAY_BUFFER_BINDING,highest);
+ validate_array(GL_NORMAL_ARRAY,0,GL_NORMAL_ARRAY_TYPE,GL_NORMAL_ARRAY_STRIDE,GL_NORMAL_ARRAY_POINTER,GL_NORMAL_ARRAY_BUFFER_BINDING,highest);
+ GLint selected,units;glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE,&selected);glGetIntegerv(GL_MAX_TEXTURE_UNITS,&units);
+ for(int i=0;i<units;i++){glClientActiveTexture(GL_TEXTURE0+i);validate_array(GL_TEXTURE_COORD_ARRAY,GL_TEXTURE_COORD_ARRAY_SIZE,GL_TEXTURE_COORD_ARRAY_TYPE,GL_TEXTURE_COORD_ARRAY_STRIDE,GL_TEXTURE_COORD_ARRAY_POINTER,GL_TEXTURE_COORD_ARRAY_BUFFER_BINDING,highest);}glClientActiveTexture(selected);
+ if(glIsEnabled(GL_INDEX_ARRAY)||glIsEnabled(GL_EDGE_FLAG_ARRAY))hle_fatal("GL index/edge client arrays are unsupported");
+}
+static void draw_arrays(void){gl_require();int first=(int32_t)A32(1),count=(int32_t)A32(2);if(first<0||count<0||(uint64_t)first+count>INT32_MAX)hle_fatal("Invalid GL array draw range");if(count)validate_arrays(first+count-1);glDrawArrays(A32(0),first,count);RET(0,3);}
+static void draw_elements(void){
+ gl_require();GLint bound;glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING,&bound);int count=(int32_t)A32(1);GLenum type=A32(2);unsigned bytes=type==GL_UNSIGNED_BYTE?1:type==GL_UNSIGNED_SHORT?2:type==GL_UNSIGNED_INT?4:0;
+ if(bound||count<0||!bytes||(uint64_t)count*bytes>UINT32_MAX)hle_fatal("Invalid GL indexed draw or VBO unsupported");uint32_t highest=0,address=A32(3);
+ if(count){gl_buffer(address,(size_t)count*bytes,0);for(int i=0;i<count;i++){uint32_t index=bytes==1?MEM8(address+i):bytes==2?MEM16(address+2*i):MEM32(address+4*i);if(index>highest)highest=index;}validate_arrays(highest);}
+ glDrawElements(A32(0),count,type,count?gm_ptr(address):NULL);RET(0,4);
+}
+
 static const win32hle_shim manual_gl_shims[]={
+ {"glVertexPointer",vertex_pointer},{"glTexCoordPointer",texcoord_pointer},{"glColorPointer",color_pointer},{"glNormalPointer",normal_pointer},{"glDrawArrays",draw_arrays},{"glDrawElements",draw_elements},
  {"ChoosePixelFormat",choose_pixel_format},{"DescribePixelFormat",describe_pixel_format},{"SetPixelFormat",set_pixel_format},
  {"wglCreateContext",create_context},{"wglMakeCurrent",make_current},{"wglDeleteContext",delete_context},{"wglGetCurrentContext",get_current_context},{"wglGetCurrentDC",get_current_dc},{"wglGetProcAddress",proc_address},{"wglSwapBuffers",swap_buffers},{"SwapBuffers",swap_buffers},
  {"glGetError",get_error},{"glGetString",get_string},{"glGetIntegerv",get_integer},{"glGetFloatv",get_float},{"glGenTextures",gen_textures},{"glDeleteTextures",delete_textures},{"glTexImage2D",tex_image},{"glTexSubImage2D",tex_sub_image},{"glReadPixels",read_pixels},{"glLoadMatrixf",load_matrix},{"glMultMatrixf",mult_matrix},{0,0}

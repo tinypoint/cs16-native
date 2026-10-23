@@ -26,7 +26,7 @@
 - 原 HTML 面板已成功创建系统 WebKit 对象，原启动继续读到 MOTD、队伍选择、计分板、旁观界面与 config.cfg。没有改写原构造函数或游戏菜单。
 - 网页组件独立检查通过：真实本地 HTML 加载、DOM 标题与滚动、连接点通知、接口身份和引用生命周期、真实快照写入访客 DIB（红／蓝上下像素核对）。共 6 个独立检查通过；当前网页桥接仍为部分实现，未完成输入、完整 MSHTML 和浏览器后端。
 - 后续已接通同进程句柄复制、线程对象生命周期、真实 DirectSound/CoreAudio 输出；模块表容量由 32 扩至 256，增加 Unicode 模块名、INI 字符串与部分 Winsock 桥接。原音频初始化继续执行，原 Steam 客户端、好友与服务器列表依赖模块已加载。
-- 修复 wsock32.dll / ws2_32.dll 序号 10–12 混用导致的 stdcall 栈失衡；新增直接序号调用的栈平衡检查。当前在原 steamclient.dll 的 GetAdaptersInfo 系统接口停止，尚无原游戏缓冲区交换或游戏画面。
+- 修复 wsock32.dll / ws2_32.dll 序号 10–12 混用导致的 stdcall 栈失衡；新增直接序号调用的栈平衡检查。后续已接通 GetAdaptersInfo、普通 WSASocket 创建、ExtTextOutW 和 OpenGL 客户端数组，第一次原 SwapBuffers 的实际图像含 CS 背景与界面。目前在原 HTML 元素的 IConnectionPointContainer 事件订阅接口停止，尚不可玩。
 
 上一阶段启动与两个独立检查的精简结果：[original-startup.json](evidence/original-startup.json)。复现与限制：[诊断宿主说明](LAUNCHER.md)。
 
@@ -37,6 +37,8 @@
 最新 WebKit 与启动证据：[webbrowser-startup.json](evidence/webbrowser-startup.json)，[网页组件实现范围](WEBBROWSER.md)。
 
 最新音频、句柄和网络证据：[audio-startup.json](evidence/audio-startup.json)，[实现范围与复现](AUDIO_STARTUP.md)。
+
+最新第一帧与接口回归：[first-frame.json](evidence/first-frame.json)，[内容、限制与复现](FIRST_FRAME.md)。
 
 ## 批量静态转换实验
 
@@ -72,7 +74,7 @@
 
 ## 当前边界与下一步
 
-完整 CS 1.6 尚未启动；没有已验证的 Mac 应用或可玩 Web 页面。下一步接通原 Steam 客户端所需的网络适配器查询，继续追踪菜单、原客户端回调和首帧图形路径。当前仅 Steam 的转换结果含异常继续入口；其他模块、完整 C++／SEH、DLL 生命周期、Wasm 内存布局与尾调用兼容仍需完成。
+已得到原程序第一帧，完整 CS 1.6 仍不可玩；没有已验证的 Mac 应用或可玩 Web 页面。下一步接通原 HTML 元素的事件订阅，继续验证菜单持续运行和进入地图。当前仅 Steam 的转换结果含异常继续入口；其他模块、完整 C++／SEH、DLL 生命周期、Wasm 内存布局与尾调用兼容仍需完成。
 
 上游基础检查的 16 项通过和之前的源码引擎编译属于已否决的 Xash 路线，不计入本项目原程序迁移证据。红警仓库保持不变。
 
