@@ -28,3 +28,5 @@ Vercel 的 Git 仓库连接 API 当前返回需要安装 GitHub 集成，因此�
 原源码与 macOS／Web 宿主仍放同一仓库，原游戏资源和生成二进制不进 Git。由 `prepare_web_preview.py` 准备带内容哈希的 `.local/web-publish/`，用 `check_web_frame.cjs` 验证正式加载器，再重新准备并用 `publish_web_preview.py` 发布；后者只上传当前清单引用的文件，拒绝未验证或证据哈希不匹配的程序。`deploy_web.py --status` 保留部署状态查询，旧的纯页面发布入口拒绝覆盖首屏实验。
 
 程序与资源在 Vercel 同域托管，均启用隔离响应头。程序约 11.2 MB、启动资源约 12.1 MB；浏览器 CacheStorage 按 SHA-256 缓存，刷新重复使用。当前原程序停在 CD Key 输入窗口，预览不接入操作。
+
+已发布 `dpl_JpYzdQMkxuXQRJmjNY1RVr9Hcnnp`，Vercel 状态 READY，正式地址 https://cs16-native.vercel.app/ 。正式 HTTPS 地址的 Chromium 首屏与刷新检查通过，第二次启动没有请求两个大包；实际响应的隔离策略、压缩体大小和不可变缓存头与清单一致。

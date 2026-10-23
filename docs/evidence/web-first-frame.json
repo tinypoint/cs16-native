@@ -65,5 +65,26 @@
   },
   "originalProgramPatched": false,
   "replacementEngine": false,
-  "macScreenshotDelivered": false
+  "macScreenshotDelivered": false,
+  "publicDeployment": {
+    "id": "dpl_JpYzdQMkxuXQRJmjNY1RVr9Hcnnp",
+    "url": "https://cs16-native.vercel.app/",
+    "status": "READY",
+    "browser": "chromium",
+    "frame": true,
+    "error": null,
+    "reload": {
+      "frame": true,
+      "largeResourceRequests": []
+    },
+    "build": {
+      "loaderSha256": "ccb1eb76871e782bfc82da8b087873e485383a691cd59e3d745df508c2d9e33f",
+      "runtimeSha256": "3fff01ceb036fcf2bdf6e03b891de7f8b1752ea9fdf40b8ed136bb910bd2c9ad",
+      "resourceSha256": "9f98ea7d103f760a70d18b8551dab4e5a4837174653297aa73a127fab17da8ae"
+    },
+    "reportSha256": "7d453a1b24c2845bcfb8dd26ac3a0fbc7cbc9b62afc570f635f2f568d4b896d0",
+    "coop": "same-origin",
+    "coep": "require-corp",
+    "largeAssetCacheControl": "public, max-age=31536000, immutable"
+  }
 }
