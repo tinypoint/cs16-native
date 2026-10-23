@@ -10,6 +10,14 @@
 
 这仅证明第一批隔离函数的转换路径，**还没有启动完整 CS 1.6，也没有可玩的 Mac 或 Web 入口**。引擎级动态库加载、接口、回调和实际对局仍需开发与验证。详见 [进度与证据](docs/STATUS.md)、[原程序迁移路线](docs/PORT_PLAN.md)。
 
+## 仓库与手机访问
+
+- 源码仓库：https://github.com/tinypoint/cs16-native （同时维护 macOS 与 Web）。
+- 固定 HTTPS 入口：https://cs16-native.vercel.app/ 。
+- 当前入口版本：v0.0.1，`manifest.ready=false`，明确显示原程序尚不可运行，不下载游戏资源。
+- Vercel 项目：`cs16-web`。网页目录为 `web/`，与红警项目独立。
+- 当前通过 `tools/deploy_web.py` 直接发布；Vercel 返回未安装 GitHub 集成，尚未启用推送自动部署。详细步骤见 [部署说明](docs/DEPLOYMENT.md)。
+
 ## 项目内容
 
 | 路径 | 用途 |
