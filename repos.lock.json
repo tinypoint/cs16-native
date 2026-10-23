@@ -1,0 +1,11 @@
+{
+  "pcrecomp": {
+    "url": "https://github.com/sp00nznet/pcrecomp.git",
+    "commit": "bd26806fbd4714d670d2dee75973c5eaff64674c"
+  },
+  "formatReference": {
+    "url": "https://github.com/oxiKKK/goldsource-dll-decryptor",
+    "commit": "ab22ea9e2c32d7ba62a06f8f59bb419fd32537b5",
+    "use": "Read-only format research; not linked or executed"
+  }
+}

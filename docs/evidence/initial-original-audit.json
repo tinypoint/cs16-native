@@ -1,0 +1,74 @@
+{
+  "input": {
+    "input": "CounterStrike1.6.zip",
+    "bytes": 531009895,
+    "sha256": "0aca7809be8bb5b164bb4a826b468f9bff1776342febdf4f477d95e746633ad8",
+    "entries": 5278,
+    "unpackedBytes": 934761943,
+    "archiveCrcReadDuringExtraction": true,
+    "programsExecuted": false
+  },
+  "isolatedProbe": {
+    "inputSha256": "0e7f1764f7ff9705153247b5a282acd16b57f488323f85c38457c3b73f2fa677",
+    "functions": [
+      {
+        "name": "GetNewDLLFunctions",
+        "start": "0x10059b20",
+        "end": "0x10059b5a",
+        "codeSha256": "0015a200fcf3cd5b4433137b8fc91604c7e2126304eb7c98535ad0f889d2a797"
+      },
+      {
+        "name": "?SparkStop@CEnvSpark@@QAEXPAVCBaseEntity@@0W4USE_TYPE@@M@Z",
+        "start": "0x10058c50",
+        "end": "0x10058c61",
+        "codeSha256": "6f4f91ab3d2996ac7629a28417b47a64e517e207d76ce72922170a8645757411"
+      },
+      {
+        "name": "?DetonateUse@CGrenade@@QAEXPAVCBaseEntity@@0W4USE_TYPE@@M@Z",
+        "start": "0x10077820",
+        "end": "0x1007783b",
+        "codeSha256": "6a6aa92097c95aa79ccaee686b2e3e25df1254b36522ff71e3668dd9a9f14aa1"
+      }
+    ],
+    "total": 64,
+    "passed": 64,
+    "targets": [
+      "arm64-macOS",
+      "wasm32-Node"
+    ],
+    "scope": "Isolated original DLL functions with controlled memory; game not launched. Unicorn is an x86 reference, not a hardware validation."
+  },
+  "moduleTranslation": [
+    {
+      "module": "mp",
+      "inputSha256": "0e7f1764f7ff9705153247b5a282acd16b57f488323f85c38457c3b73f2fa677",
+      "generatedFunctions": 6644,
+      "generationErrors": 0,
+      "functionsWithUnimplementedInstructions": 18,
+      "uncleanExtents": 26,
+      "compiled": false,
+      "gameLaunched": false
+    },
+    {
+      "module": "hw",
+      "inputSha256": "525bdbddf2f180824944ee2576702e040c2f5554ca4290f40faec842e2cf02bb",
+      "generatedFunctions": 14913,
+      "generationErrors": 0,
+      "functionsWithUnimplementedInstructions": 30,
+      "uncleanExtents": 6,
+      "compiled": false,
+      "gameLaunched": false
+    },
+    {
+      "module": "cstrike-client",
+      "inputSha256": "1dbddceb74daa150921db3f201c9ed66c2e399884bd10f5674b06e5133c455f2",
+      "generatedFunctions": 5908,
+      "generationErrors": 0,
+      "functionsWithUnimplementedInstructions": 18,
+      "uncleanExtents": 2,
+      "compiled": false,
+      "gameLaunched": false
+    }
+  ],
+  "gamePlayable": false
+}

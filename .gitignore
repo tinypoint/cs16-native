@@ -1,0 +1,9 @@
+/.venv/
+/.local/
+/vendor/
+/game/
+/incoming/
+/logs/*
+!/logs/.gitkeep
+__pycache__/
+.DS_Store
