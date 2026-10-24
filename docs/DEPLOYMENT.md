@@ -24,3 +24,7 @@ Vercel 项目为 `cs16-web`，根目录为 `web/`。固定地址：https://cs16-
 页面提供 HTTPS、COOP same-origin、COEP require-corp 和 CORP same-origin。入口与清单重新验证缓存；`artifact/` 与 `resources/` 使用一年不可变缓存和内容哈希路径。浏览器另用 CacheStorage 校验并保存下载内容，已验证刷新时没有重新请求程序或资源包。未注册 Service Worker。
 
 凭据位于被忽略的 `.local/web-access/`，不进入命令参数或源码。Vercel 的 GitHub 集成尚未安装；源码 push 与直接发布分别执行，不能认为 push 会自动部署。旧 `deploy_web.py` 纯页面入口不应覆盖已验证的程序版本。
+
+## v0.0.4 交付核对
+
+部署 `dpl_bnUpGYNbW36gKL2sCjSaCpYnnvrH` 已返回 READY，固定地址已显示 v0.0.4。公开入口、脚本、样式和加载器与验证暂存文件逐字节一致；21 个程序／资源文件的大小、不可变缓存与 CORP 响应头检查通过，入口 COOP／COEP 正确。完整动作测试使用相同字节的本地部署，未重复从公网下载完整资源进行对局；iPhone Safari 仍待实机确认。见 [公开交付记录](evidence/web-offline-map-deployment.json)。

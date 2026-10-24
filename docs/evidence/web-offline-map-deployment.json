@@ -1,0 +1,14 @@
+{
+  "recordedAt": "2026-10-24T05:37:58.673445+00:00",
+  "url": "https://cs16-native.vercel.app/",
+  "version": "0.0.4",
+  "deploymentId": "dpl_bnUpGYNbW36gKL2sCjSaCpYnnvrH",
+  "readyState": "READY",
+  "sourceCommit": "b3daeee3244454f57abd3aa86d25d390b40f0ad1",
+  "frontendExactStagedBytes": true,
+  "resourceFilesChecked": 21,
+  "resourceLengthsAndImmutableCacheHeaders": true,
+  "isolationHeaders": true,
+  "fullRemoteGameplayRetest": false,
+  "scope": "Public delivery checks; complete original-program touch actions and cached reload were tested locally with the identical staged assets. iPhone Safari has not been tested."
+}
