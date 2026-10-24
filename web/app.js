@@ -3,14 +3,18 @@
 // Only pixels read from that instance can complete this preview.
 (async()=>{
  const status=document.getElementById('status'),version=document.getElementById('version');
- const logs=[];let reachedFrame=false;
+ const logs=[];let reachedFrame=false,appVersion='…';
+ let priorFrames=0,fps='—',copyUntil=0;
+ window.cs16Diagnostics=()=>({time:new Date().toISOString(),version:appVersion,browser:navigator.userAgent,isolated:crossOriginIsolated,frameCount:window.cs16FrameCount||0,fps,runtime:window.cs16RuntimeInfo||null,input:window.cs16InputDiagnostics||null,fatal:window.cs16Fatal||null,status:status.textContent,logs:logs.slice(-160)});
+ version.addEventListener('click',async()=>{const report=JSON.stringify(window.cs16Diagnostics(),null,2);try{await navigator.clipboard.writeText(report);copyUntil=Date.now()+2500;version.textContent='诊断已复制'}catch{version.textContent='复制失败，请再点一次'}});
+ setInterval(()=>{const frames=window.cs16FrameCount||0;fps=String(frames-priorFrames);priorFrames=frames;if(Date.now()>copyUntil)version.textContent='v'+appVersion+' · FPS '+fps+' · 复制诊断'},1000);
  const save=()=>{try{localStorage.setItem('cs16-preview-last',JSON.stringify({time:new Date().toISOString(),version:version.textContent,frame:reachedFrame,logs:logs.slice(-160)}))}catch{}};
  function output(value){const line=String(value);logs.push(line);if(logs.length>400)logs.shift();console.log(line);
   if(line.includes('[web-preview] original pixels presented')){reachedFrame=true;document.body.classList.add('has-frame');status.textContent='原程序正在运行';save()}
   else if(/FATAL:|\[guest-memory-web\]|\[web-unloaded\]|Aborted\(|uncaught exception/.test(line)){document.body.classList.add('failed');status.textContent='原程序停止：'+line;save()}
  }
  window.addEventListener('error',event=>{logs.push(event.message);document.body.classList.add('failed');status.textContent='运行出错：'+event.message;save()});
- const manifest=await(await fetch('manifest.json',{cache:'no-store'})).json();version.textContent='v'+manifest.version+' · Wasm 开发版';
+ const manifest=await(await fetch('manifest.json',{cache:'no-store'})).json();appVersion=manifest.version;version.textContent='v'+appVersion+' · 复制诊断';
  const preview=manifest.preview;if(!preview?.ready){status.textContent=manifest.message;return}
  if(!crossOriginIsolated||typeof SharedArrayBuffer==='undefined')throw new Error('此预览需要支持隔离线程的 HTTPS 浏览器');
  if(!('OffscreenCanvas' in window)||typeof HTMLCanvasElement.prototype.transferControlToOffscreen!=='function')throw new Error('此浏览器暂不支持所需的离屏绘图接口');
@@ -48,12 +52,13 @@
 
 function bindInput(module){
  const canvas=document.getElementById('display');canvas.tabIndex=0;let touchMode=false;const touches=new Map();
- const send=(kind,a=0,b=0,c=0)=>module._cs16_web_input(kind,a,b,c);
+ const gameTouch=e=>touchMode&&e.pointerType==='touch'&&window.cs16RuntimeInfo?.connection===5&&window.cs16RuntimeInfo?.server===2&&window.cs16RuntimeInfo?.weaponId>0;
+ const send=(kind,a=0,b=0,c=0)=>{const accepted=module._cs16_web_input(kind,a,b,c);const info=window.cs16InputDiagnostics||(window.cs16InputDiagnostics={sent:0,dropped:0});info.sent++;if(!accepted)info.dropped++;info.last={time:Date.now(),kind,a,b,c};return accepted};
  const point=e=>{const r=canvas.getBoundingClientRect();return [Math.max(0,Math.min(canvas.width-1,Math.floor((e.clientX-r.left)*canvas.width/r.width))),Math.max(0,Math.min(canvas.height-1,Math.floor((e.clientY-r.top)*canvas.height/r.height)))];};
  const mouse=(message,e)=>{if(document.pointerLockElement===canvas){if(message!==0x200)send(5,message);return}const [x,y]=point(e);send(1,message,x,y)};
  canvas.addEventListener('contextmenu',e=>e.preventDefault());
- canvas.addEventListener('pointerdown',e=>{e.preventDefault();canvas.focus({preventScroll:true});canvas.setPointerCapture(e.pointerId);if(touchMode&&e.pointerType==='touch'){touches.set(e.pointerId,[e.clientX,e.clientY]);return}mouse(0x200,e);mouse(e.button===2?0x204:0x201,e)});
- canvas.addEventListener('pointermove',e=>{e.preventDefault();if(touchMode&&e.pointerType==='touch'){const old=touches.get(e.pointerId);if(old){send(4,Math.round((e.clientX-old[0])*canvas.width/canvas.clientWidth),Math.round((e.clientY-old[1])*canvas.height/canvas.clientHeight));touches.set(e.pointerId,[e.clientX,e.clientY])}return}if(document.pointerLockElement===canvas)send(4,e.movementX,e.movementY);else mouse(0x200,e)});
+ canvas.addEventListener('pointerdown',e=>{e.preventDefault();canvas.focus({preventScroll:true});canvas.setPointerCapture(e.pointerId);if(gameTouch(e)){touches.set(e.pointerId,[e.clientX,e.clientY]);return}mouse(0x200,e);mouse(e.button===2?0x204:0x201,e)});
+ canvas.addEventListener('pointermove',e=>{e.preventDefault();if(gameTouch(e)){const old=touches.get(e.pointerId);if(old){send(4,Math.round((e.clientX-old[0])*canvas.width/canvas.clientWidth),Math.round((e.clientY-old[1])*canvas.height/canvas.clientHeight));touches.set(e.pointerId,[e.clientX,e.clientY])}return}if(document.pointerLockElement===canvas)send(4,e.movementX,e.movementY);else mouse(0x200,e)});
  canvas.addEventListener('pointerup',e=>{e.preventDefault();if(touches.delete(e.pointerId)){if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);return}mouse(e.button===2?0x205:0x202,e);if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId)});
  canvas.addEventListener('pointercancel',()=>reset());
  const key=e=>{if(e.code.startsWith('Key'))return e.code.charCodeAt(3);if(e.code.startsWith('Digit'))return e.code.charCodeAt(5);return {Escape:27,Enter:13,Space:32,Tab:9,Backspace:8,ArrowUp:38,ArrowDown:40,ArrowLeft:37,ArrowRight:39,ShiftLeft:16,ShiftRight:16,ControlLeft:17,ControlRight:17,AltLeft:18,AltRight:18}[e.code]||0};
@@ -77,7 +82,7 @@ function bindInput(module){
  for(const button of controls.querySelectorAll('button')){
   let active=null;const press=down=>button.dataset.mouse?send(5,Number(button.dataset.mouse)===2?(down?0x204:0x205):(down?0x201:0x202)):send(2,down?1:0,Number(button.dataset.key),Number(button.dataset.scan));
   button.addEventListener('pointerdown',e=>{e.preventDefault();if(active!==null)return;active=e.pointerId;button.setPointerCapture(active);press(true)});
-  for(const type of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(type,e=>{if(active!==e.pointerId)return;active=null;press(false)});
+  for(const type of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(type,e=>{if(active!==e.pointerId)return;active=null;press(false);if(button.id==='game-menu'){reset();touchMode=false;controls.hidden=true;toggle.setAttribute('aria-pressed','false')}});
  }
  window.addEventListener('blur',reset);document.addEventListener('visibilitychange',()=>{if(document.hidden)reset()});
 }

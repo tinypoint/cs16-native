@@ -5,3 +5,9 @@ button{font:14px system-ui;color:#eee;background:#222b;border:1px solid #aaa7;bo
 .failed #notice{display:flex;align-items:end;background:#0008;pointer-events:none}.failed #status{background:#300d;padding:12px;overflow-wrap:anywhere}
 
 #mouse-lock{position:fixed;z-index:5;right:max(10px,env(safe-area-inset-right));top:max(66px,calc(env(safe-area-inset-top) + 56px));width:48px;height:48px;font-size:12px}
+
+#version{pointer-events:auto;border:0;border-radius:0;background:transparent;min-height:28px;padding:4px 0;z-index:6;cursor:pointer}#version:active{background:#2228}
+
+#version{position:fixed;top:max(12px,env(safe-area-inset-top));left:72px;right:72px;bottom:auto;text-align:center;white-space:nowrap}
+
+#version{right:auto;width:max-content;max-width:calc(100vw - 144px)}

@@ -99,6 +99,10 @@ def main():
    s=patch(s);(host/'opengl_bindings.inc').write_text(bindings((ROOT/'runtime/win32/opengl_bindings.inc').read_text(),available))
   if p.name=='native_window.c':
    s=s.replace('SDL_GL_CONTEXT_MINOR_VERSION,1','SDL_GL_CONTEXT_MINOR_VERSION,0')
+   # All Web pointer/key events already pass through our atomic queue.
+   # SDL also listens on document mouse-up/key events, even for the hidden
+   # native canvas; forwarding those again changes the guest cursor/state.
+   s=s.replace('while(SDL_PollEvent(&event)){','while(SDL_PollEvent(&event)){if(event.type==SDL_MOUSEMOTION||event.type==SDL_MOUSEBUTTONDOWN||event.type==SDL_MOUSEBUTTONUP||event.type==SDL_KEYDOWN||event.type==SDL_KEYUP)continue;')
    s=s.replace('static void pump(void){','extern void cs16_web_input_pump(uint32_t);\nstatic void pump(void){')
    s=s.replace('if(!initialized)return;update_cursor();SDL_Event event;', 'if(!initialized)return;for(unsigned i=0;i<32;i++)if(windows[i].hwnd){cs16_web_input_pump(windows[i].hwnd);break;}SDL_Event event;')
   if p.name=='gdidc.c':
@@ -145,5 +149,8 @@ def main():
  link=[str(emcc),'--emit-symbol-map','-O1','-g1','-pthread','-mtail-call',*map(str,objects),'--use-port=sdl2','--use-port=sdl2_ttf','-sCASE_INSENSITIVE_FS=1','-sLEGACY_GL_EMULATION=1','-sGL_FFP_ONLY=1','-sGL_UNSAFE_OPTS=0','-sGL_ASSERTIONS=1','-sOFFSCREEN_FRAMEBUFFER=1','-sOFFSCREENCANVAS_SUPPORT=1','-sPROXY_TO_PTHREAD=1','-sPTHREAD_POOL_SIZE=6','-sMODULARIZE=1','-sEXPORT_NAME=createCS16Web','-sENVIRONMENT=web,worker','-sINITIAL_MEMORY=67108864','-sALLOW_MEMORY_GROWTH=1','-sMAXIMUM_MEMORY=1073741824','-sSTACK_SIZE=4194304','-sSTACK_OVERFLOW_CHECK=2','-sINCOMING_MODULE_JS_API=canvas,noInitialRun,onAbort,print,printErr,locateFile,wasmBinary,wasm,instantiateWasm,noExitRuntime,onExit,onRuntimeInitialized,preRun,postRun,arguments,thisProgram','-sEXPORTED_RUNTIME_METHODS=FS,callMain','-sEXPORTED_FUNCTIONS=_main,_cs16_web_input','-sEXIT_RUNTIME=1','-sASSERTIONS=1','-sERROR_ON_UNDEFINED_SYMBOLS=1','-Wl,--error-limit=0','-o',str(out/'cs16-web.js')]
  p=subprocess.run(link,env=env,capture_output=True,text=True,timeout=600);(ROOT/'logs/web-link.log').write_text(p.stdout+p.stderr)
  if p.returncode:raise SystemExit(p.stderr[-3500:])
+ # Legacy emulation reserves three non-texture vertex attributes. The SDK
+ # sampler limit alone can exceed a WebGL device's attribute capacity.
+ loader=out/'cs16-web.js';text=loader.read_text();old='GLImmediate.MAX_TEXTURES = Math.min(maxTextureUnits, 28);';assert text.count(old)==1,'Review GLImmediate initialization for this SDK';text=text.replace(old,'GLImmediate.MAX_TEXTURES = Math.min(maxTextureUnits, 28, GLctx.getParameter(GLctx.MAX_VERTEX_ATTRIBS) - 3);');loader.write_text(text)
  print('Wasm built',round(time.monotonic()-start,1),'seconds; original game/browser execution unverified',flush=True)
 if __name__=='__main__':main()

@@ -35,13 +35,34 @@ static void web_delete_textures(GLsizei n,const GLuint *names){for(GLsizei k=0;k
  # Emscripten appends each attribute call to an interleaved stream instead;
  # submit a complete, identical layout at every original vertex boundary.
  declarations += """
-static int web_in_begin;
+static int web_in_begin;static GLenum web_primitive;
 static GLfloat web_current_color[4]={1,1,1,1},web_current_texcoord[2];
-static void web_begin(GLenum mode){glBegin(mode);web_in_begin=1;}
-static void web_end(void){glEnd();web_in_begin=0;glColor4fv(web_current_color);}
-static void web_color(GLfloat r,GLfloat g,GLfloat b,GLfloat a){web_current_color[0]=r;web_current_color[1]=g;web_current_color[2]=b;web_current_color[3]=a;if(!web_in_begin)glColor4f(r,g,b,a);}
+typedef struct {GLfloat position[4],texcoord[2],color[4];} web_vertex_data;
+static web_vertex_data *web_vertices;static size_t web_vertex_count,web_vertex_capacity;
+static void web_begin(GLenum mode){if(web_in_begin)hle_fatal("Nested GL begin");web_in_begin=1;web_primitive=mode;web_vertex_count=0;}
+static void web_end(void){
+ if(!web_in_begin)hle_fatal("GL end without begin");web_in_begin=0;
+ if(web_vertex_count){
+  glEnableClientState(GL_VERTEX_ARRAY);glEnableClientState(GL_TEXTURE_COORD_ARRAY);glEnableClientState(GL_COLOR_ARRAY);
+  glVertexPointer(4,GL_FLOAT,sizeof(web_vertex_data),web_vertices[0].position);
+  glTexCoordPointer(2,GL_FLOAT,sizeof(web_vertex_data),web_vertices[0].texcoord);
+  glColorPointer(4,GL_FLOAT,sizeof(web_vertex_data),web_vertices[0].color);
+  glDrawArrays(web_primitive,0,(GLsizei)web_vertex_count);
+  for(unsigned i=0;i<3;i++){
+   web_array *a=&web_arrays[i];GLenum cap=i==0?GL_VERTEX_ARRAY:i==1?GL_TEXTURE_COORD_ARRAY:GL_COLOR_ARRAY;
+   if(a->address){const void *pointer=gm_ptr(a->address);if(i==0)glVertexPointer(a->size,a->type,a->stride,pointer);else if(i==1)glTexCoordPointer(a->size,a->type,a->stride,pointer);else glColorPointer(a->size,a->type,a->stride,pointer);}
+   if(a->enabled)glEnableClientState(cap);else glDisableClientState(cap);
+  }
+ }
+ glColor4fv(web_current_color);
+}
+static void web_color(GLfloat r,GLfloat g,GLfloat b,GLfloat a){web_current_color[0]=r<0?0:r>1?1:r;web_current_color[1]=g<0?0:g>1?1:g;web_current_color[2]=b<0?0:b>1?1:b;web_current_color[3]=a<0?0:a>1?1:a;if(!web_in_begin)glColor4f(r,g,b,a);}
 static void web_texcoord(GLfloat s,GLfloat t){web_current_texcoord[0]=s;web_current_texcoord[1]=t;}
-static void web_vertex(GLfloat x,GLfloat y,GLfloat z,GLfloat w){glColor4fv(web_current_color);glTexCoord2fv(web_current_texcoord);glVertex4f(x,y,z,w);}
+static void web_vertex(GLfloat x,GLfloat y,GLfloat z,GLfloat w){
+ if(!web_in_begin)hle_fatal("GL vertex outside begin");
+ if(web_vertex_count==web_vertex_capacity){size_t next=web_vertex_capacity?web_vertex_capacity*2:256;if(next>1048576)hle_fatal("Immediate vertex limit exceeded");void *p=realloc(web_vertices,next*sizeof *web_vertices);if(!p)hle_fatal("Immediate vertex allocation failed");web_vertices=p;web_vertex_capacity=next;}
+ web_vertex_data *v=&web_vertices[web_vertex_count++];v->position[0]=x;v->position[1]=y;v->position[2]=z;v->position[3]=w;memcpy(v->texcoord,web_current_texcoord,sizeof v->texcoord);memcpy(v->color,web_current_color,sizeof v->color);
+}
 """
  source=source.replace(needle,declarations+needle)
  source=source.replace('#include <emscripten.h>','#include <emscripten.h>\n#include <emscripten/html5.h>')
