@@ -1,0 +1,166 @@
+{
+  "version": "0.0.4",
+  "browser": "155.0.8059.85",
+  "input": "touchscreen tap, touch view drag and virtual movement/fire controls",
+  "build": {
+    "loaderSha256": "6cd39e265cb6c3979df5cf00db6eaeb5007799058ce721ef581cc560fba70c89",
+    "runtimeSha256": "dc3c8f5986f08de77a88d01d9900dfeb2a2ab4f0f5e3b9253ff6c88c9c782b4e",
+    "resourceSha256": "9f98ea7d103f760a70d18b8551dab4e5a4837174653297aa73a127fab17da8ae",
+    "gameplaySha256": [
+      "44e0c336e96d93007706ef476ac461cc78a0a9378378aefb13e2732a36995ad4",
+      "13f4d0d2d1bf9151987d7f0cdb81b226a7fc1655e97804c9f08904e5164dfb1c",
+      "0a04e5686ca0fb800e237354cdadc110f3d708437be1006e354dacfd0cb97561",
+      "e8424a335f6ff8bdee35e67b4bb8a2227199b79a40709055e1af4f009f832fdc",
+      "f7bcad6342eb699860184d48bcd038823c99a9f93703e69ff46abaf1c33e00b8",
+      "84ef306aca29eeb51f2fd27dec14270cf3a5fd0e16e181403f180bc43a4ac3be",
+      "69021258ad4a52379cd907379a0c2d185eebec520e955ab26a1d27f4e1cfbd98",
+      "7901fd2d76a4cb95895cdefc60ca36a4c6dc1869a2e11ef1c2ad7928054d934a",
+      "e31565014fa9f8f146a5481c1c701565ccb38e42aa97d3bb019e5a4aa5bbdfe2",
+      "a82aba63240dd2f6ce271762ea0650732354675cb38681fe23f15445eafacd6c",
+      "f83b3267fc6c578885655aab83bb9b4021ea88509ba66d23701e8a3773cd8328",
+      "d56302875918b3ae7cc5f5d00eeb671d572578d59f1f55a26fb587328e5c403f",
+      "849db20accfdae715dd244b15e1b67da66b984708747bc54df7551be2fcdda53",
+      "10595fbdcc22c5b6dbb022d7e370e830832f5c73e2976c7d9b7f2d0178e05a60",
+      "a88a1fac8435aca3d466c0ddc0e306a137af54e5a35a6bc2637ef0530f4ed24a",
+      "ee729e2de5bc49e9f0e95efb4215d9dbcbb0180ea115a07a3d44a1716d121e3a",
+      "b106a2be29365c2c6fe8d2d2598857304865a84e8e588e70dc99baf7e6b05140",
+      "63d849d8759064a3896a7a4e1676e3ef76844f82b3da5e9b814d44dc99f9b067",
+      "5324c5c72f26bf0a2f9a4ac58e923b4598fd225e526593db1d116b3fa9518c2b"
+    ],
+    "frontendSha256": {
+      "index.html": "48e469c5225b41f3ceaf984e332040c3d0193334557cf960af8023ac4de8f385",
+      "app.js": "29fb7c3451f28242e430cbd987b5d88acb587201016faa7f9d0da76c1eada520",
+      "style.css": "5199ed2f8d1cfecb23868aceb10e070d6fbf4de5647cfca2cc1c9fe74df2bbda"
+    }
+  },
+  "frame": true,
+  "error": null,
+  "checks": {
+    "map": true,
+    "character": true,
+    "movement": true,
+    "turning": true,
+    "firing": true,
+    "cachedReload": true
+  },
+  "samples": {
+    "spawn": {
+      "connection": 5,
+      "server": 2,
+      "memoryBytes": 471859200,
+      "clientUpdates": 254,
+      "origin": [
+        -832,
+        -704,
+        164.03125
+      ],
+      "angles": [
+        0,
+        158.9996337890625,
+        0
+      ],
+      "weaponUpdates": 1,
+      "weaponId": 17,
+      "clip": 20
+    },
+    "moved-forward": {
+      "connection": 5,
+      "server": 2,
+      "memoryBytes": 471859200,
+      "clientUpdates": 438,
+      "origin": [
+        -879.96875,
+        -656.03125,
+        164.03125
+      ],
+      "angles": [
+        0,
+        158.9996337890625,
+        0
+      ],
+      "weaponUpdates": 1,
+      "weaponId": 17,
+      "clip": 20
+    },
+    "moved": {
+      "connection": 5,
+      "server": 2,
+      "memoryBytes": 471859200,
+      "clientUpdates": 438,
+      "origin": [
+        -879.96875,
+        -656.03125,
+        164.03125
+      ],
+      "angles": [
+        0,
+        158.9996337890625,
+        0
+      ],
+      "weaponUpdates": 1,
+      "weaponId": 17,
+      "clip": 20
+    },
+    "turned": {
+      "connection": 5,
+      "server": 2,
+      "memoryBytes": 471859200,
+      "clientUpdates": 519,
+      "origin": [
+        -879.96875,
+        -656.03125,
+        164.03125
+      ],
+      "angles": [
+        0,
+        156.2750244140625,
+        0
+      ],
+      "weaponUpdates": 1,
+      "weaponId": 17,
+      "clip": 20
+    },
+    "fired": {
+      "connection": 5,
+      "server": 2,
+      "memoryBytes": 471859200,
+      "clientUpdates": 620,
+      "origin": [
+        -879.96875,
+        -656.03125,
+        164.03125
+      ],
+      "angles": [
+        0,
+        156.2750244140625,
+        0
+      ],
+      "weaponUpdates": 2,
+      "weaponId": 17,
+      "clip": 19
+    }
+  },
+  "reloadResourceRequests": [],
+  "scope": "Desktop Chromium original-program offline map and browser touch-input validation; iPhone Safari, complete matches, audio output and external multiplayer are not verified.",
+  "recordedAt": "2026-10-24T05:33:41.633134+00:00",
+  "screenshots": {
+    "welcome": {
+      "sha256": "65d8e97d5dd5ea542fc828d16db5a8e6a80e7d337241a0c4b86644978df9ede2"
+    },
+    "class-menu": {
+      "sha256": "8e5df70d409aa3deb301aaef199562d832263aed89028c708867f9227273a28c"
+    },
+    "spawn": {
+      "sha256": "ca8c320b5968203cf769f4102824b0cfdfb5390dd0796e499c65cc43a08e599b"
+    },
+    "moved": {
+      "sha256": "6560234f66611cd7b84d56af9ed33abdbf6460085e199e42ab67446fec4cfcba"
+    },
+    "turned": {
+      "sha256": "4b2fa79ca5231f2c632c4fa0d5f4b40db1f7777e025898328751ec576d8a4906"
+    },
+    "fired": {
+      "sha256": "9bb2b0737aa472a5c4654b28712ab26de10d1edf50de540845d56f4d9d57b968"
+    }
+  }
+}

@@ -6,15 +6,17 @@
 
 ## 当前状态
 
-已接收并解开 `CounterStrike1.6.zip`，完成原程序清单、哈希和 PE／旧 GoldSrc BLOB 格式审计。已将上传的 `mp.dll` 中 3 个原程序函数转换为 C，再编译到 ARM64 与 Wasm，64 组受控对照用例与 Unicorn x86 参考一致。
+Web v0.0.4 开发构建已在普通 Chrome 中通过：原程序加载 `de_dust2`、触屏选队与角色、虚拟摇杆移动、拖动转向、开火和刷新缓存。测试检查原 HUD 回调中的实际玩家坐标、视角与弹匣变化。详见 [离线地图与操作](docs/WEB_OFFLINE_MAP.md) 和 [验证记录](docs/evidence/web-offline-map-check.json)。
 
-原始 hl.exe 已在 ARM64 诊断宿主中执行；原引擎创建了 Valve001 窗口和实际 OpenGL 上下文，原客户端已开始执行，ParticleMan 和 GameUI 的原 DLL 入口返回成功。窗口／字体／GPU 检查，以及原浮点环境函数的 5 组 x86 对照通过。**已在 ARM64 与浏览器 Wasm 中绘出原版 CS 背景／界面，但尚不可玩**。原 Steam 异常现已交给原捕获函数处理，启动继续进入 VGUI2 和菜单资源加载；已接通原 HTML 面板的 WebKit 初始化及部分 COM／DOM 接口，原启动继续加载队伍、计分板和旁观界面资源。句柄复制、实际 CoreAudio/DirectSound 输出和网络接口序号桥接已接通，原启动继续完成好友／服务器界面初始化并提交了实际 OpenGL 画面，完整游戏循环和 HTML 接口仍未完成。详见 [进度与证据](docs/STATUS.md)、[窗口与图形阶段](docs/NATIVE_DISPLAY.md)、[异常处理阶段](docs/NATIVE_EXCEPTION.md)、[内嵌网页组件](docs/WEBBROWSER.md)、[音频与系统接口阶段](docs/AUDIO_STARTUP.md)、[原程序第一帧](docs/FIRST_FRAME.md)。
+**iPhone Safari 尚待实机体验；部分菜单文字／HUD 图标仍有显示瑕疵，完整对局、声音输出和外部多人联机尚未验证。** macOS ARM64 宿主已加载相同原地图，处理选队／角色／移动／开火输入并持续渲染两千多帧；尚未整理成可交付的 Mac 应用。
+
+早期转换与对照记录见 [进度与证据](docs/STATUS.md)、[窗口与图形](docs/NATIVE_DISPLAY.md)、[异常处理](docs/NATIVE_EXCEPTION.md)、[内嵌网页组件](docs/WEBBROWSER.md)、[音频与系统接口](docs/AUDIO_STARTUP.md) 和 [原程序第一帧](docs/FIRST_FRAME.md)。
 
 ## 仓库与手机访问
 
 - 源码仓库：https://github.com/tinypoint/cs16-native （同时维护 macOS 与 Web）。
 - 固定 HTTPS 入口：https://cs16-native.vercel.app/ 。
-- Web 首屏实验版本：v0.0.3。原始引擎在浏览器本机执行，启动时直接进入 CS 主菜单，暂不可操作。按用户要求，迁移构建直接跳过启动 CD Key 门禁，无开关；这是对转换后控制流的一处明确修改，原输入文件不变。清单顶层 `ready=false`，单独开放 `preview`。
+- Web 离线地图测试版本：v0.0.4。原引擎在浏览器本机执行，不串流电脑画面。按用户授权，转换后控制流跳过启动和本机 LAN 的 CD Key 门禁，原输入文件不变；这不提供 Steam 身份或外部联机认证。清单顶层 `ready=false`，仅开放开发测试 `preview`。
 - Vercel 项目：`cs16-web`。网页目录为 `web/`，与红警项目独立。
 - 首屏实验通过 `tools/prepare_web_preview.py` 与 `tools/publish_web_preview.py` 发布；Vercel 返回未安装 GitHub 集成，尚未启用推送自动部署。详细步骤见 [部署说明](docs/DEPLOYMENT.md)。
 
@@ -29,7 +31,8 @@
 | `runtime/` | 独立的 ARM64 诊断宿主、访客内存、原 DLL 加载与部分 Win32 接口 |
 | `tools/build_launcher.py` / `tools/run_launcher.py` | 编译并运行原始启动流程；在独立副本上执行，记录明确停止原因 |
 | `tools/build_web.py` / `runtime/web/` | 原程序 Wasm 构建、稀疏内存、WebGL 与浏览器宿主接口 |
-| `tools/check_web_frame.cjs` | 正式加载器的实际像素和刷新缓存验证 |
+| `tools/check_web_frame.cjs` / `tools/check_web_gameplay.cjs` | 首屏、触屏离线地图动作和刷新缓存验证 |
+| `tools/pack_web_map.py` | 单独打包原地图、模型、声音及依赖，按内容哈希缓存 |
 | `tools/pack_web_startup.py` | 按原文件哈希打包启动资源，携带字体许可证 |
 | `tools/inspect_assets.py` | 只读检查资源目录 |
 | `tools/upload_server.py` | 用户请求的局域网资源接收服务，不运行上传程序 |
@@ -54,8 +57,8 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 不提供 `--emsdk` 时只检查 ARM64；同时提供它才检查两个目标。实验固定了当前上传 DLL 的哈希和导出地址，其他版本须先审计，不应直接更改地址绕过检查。Wasm 实验在 Node 中执行，尚非浏览器兼容性验证。
 
-浏览器首屏实验首次下载约 23 MB，程序与资源按内容哈希分别缓存；正式加载器的连续刷新检查未重新请求两个大包。详见 [Wasm 实验与边界](docs/WEB_WASM.md)。这不是可玩版本；没有接入输入、完整地图资源、存档或联机，真实 iPhone 尚需验证。
+离线地图版首次下载约 148 MiB，程序、启动资源和地图分块分别按内容哈希缓存；连续刷新检查没有重新请求这些大包。页面自动启动到原主菜单，选择新游戏后进入 `de_dust2`。进入人物后点右上「触控」启用左侧移动摇杆、屏幕拖动转向和右侧动作按钮；电脑浏览器可使用鼠标／键盘与「鼠标」锁定按钮。存档持久化和外部联机尚未接入。
 
 ## 原启动流程诊断
 
-详见 [诊断宿主说明](docs/LAUNCHER.md)。这是开发工具，不是已完成的 Mac 应用；原生 ARM64 与浏览器 Wasm 分别构建；Web 当前仅提供实际原程序首屏实验。
+详见 [诊断宿主说明](docs/LAUNCHER.md)。这是开发工具，不是已完成的 Mac 应用；原生 ARM64 与浏览器 Wasm 分别构建；Web 当前提供原程序离线地图开发测试。

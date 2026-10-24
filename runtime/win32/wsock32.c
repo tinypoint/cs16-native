@@ -28,6 +28,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
 #include "win32hle.h"
@@ -55,6 +56,9 @@ static uint32_t wsa_errno(int e) {
     case EBADF: case ENOTSOCK: return WSAENOTSOCK;
     case ECONNRESET: case ECONNREFUSED: return WSAECONNRESET;
     case EAFNOSUPPORT: return WSAEAFNOSUPPORT;
+    case ENOTCONN:return 10057;case ENOBUFS:case ENOMEM:return 10055;
+    case EOPNOTSUPP:return 10045;case ENETDOWN:return 10050;case ENETUNREACH:return 10051;
+    case EHOSTUNREACH:return 10065;case ETIMEDOUT:return 10060;case EINPROGRESS:return 10036;case EALREADY:return 10037;
     default: return 10000u + (uint32_t)e;
     }
 }
@@ -168,6 +172,47 @@ static void w_sendto(void) {                             /* (s, buf, len, flags,
     RET((uint32_t)n, 6);
 }
 static void w_send(void) { ssize_t n = send(fd_of(A32(0)), APTR(1), A32(2), MSG_NOSIGNAL); if (n < 0) FAIL(4); RET((uint32_t)n, 4); }
+/* Synchronous Winsock 2 scatter/gather. Pending overlapped I/O is rejected;
+ * a failed socket operation never reports successful transferred bytes. */
+#ifdef __EMSCRIPTEN__
+extern int cs16_web_socket_can_send(int,unsigned);
+#endif
+static void w_WSASend(void){
+ if(A32(5)||A32(6)){g_wsa_error=10045;RET(SOCKET_ERROR,7);}
+ uint32_t count=A32(2),buffers=A32(1),out=A32(3),flags=A32(4);int fd=fd_of(A32(0));
+ if(fd<0){g_wsa_error=WSAENOTSOCK;RET(SOCKET_ERROR,7);}
+ if(!count||count>64||!gm_accessible(buffers,count*8,0)||!out||!gm_accessible(out,4,1)){g_wsa_error=10014;RET(SOCKET_ERROR,7);}
+ if(flags&~5u){g_wsa_error=WSAEINVAL;RET(SOCKET_ERROR,7);}
+ struct iovec vectors[64];size_t bytes=0;
+ for(uint32_t i=0;i<count;i++){
+  uint32_t n=MEM32(buffers+i*8),p=MEM32(buffers+i*8+4);
+  if(n>16777216||bytes+n>16777216||(n&&!gm_accessible(p,n,0))){g_wsa_error=10014;RET(SOCKET_ERROR,7);}
+  vectors[i]=(struct iovec){n?gm_ptr(p):NULL,n};bytes+=n;
+ }
+#ifdef __EMSCRIPTEN__
+ if(!cs16_web_socket_can_send(fd,(unsigned)bytes)){g_wsa_error=WSAEWOULDBLOCK;RET(SOCKET_ERROR,7);}
+#endif
+ struct msghdr message={0};message.msg_iov=vectors;message.msg_iovlen=count;
+ int native_flags=MSG_NOSIGNAL|(flags&1?MSG_OOB:0)|(flags&4?MSG_DONTROUTE:0);
+ ssize_t sent=sendmsg(fd,&message,native_flags);if(sent<0)FAIL(7);MEM32(out)=(uint32_t)sent;RET(0,7);
+}
+static void w_WSARecv(void){
+ if(A32(5)||A32(6)){g_wsa_error=10045;RET(SOCKET_ERROR,7);}
+ uint32_t count=A32(2),buffers=A32(1),out=A32(3),flags=A32(4);int fd=fd_of(A32(0));
+ if(fd<0){g_wsa_error=WSAENOTSOCK;RET(SOCKET_ERROR,7);}
+ if(!count||count>64||!gm_accessible(buffers,count*8,0)||!out||!gm_accessible(out,4,1)||!flags||!gm_accessible(flags,4,1)){g_wsa_error=10014;RET(SOCKET_ERROR,7);}
+ if(MEM32(flags)&~3u){g_wsa_error=WSAEINVAL;RET(SOCKET_ERROR,7);}
+ struct iovec vectors[64];size_t bytes=0;
+ for(uint32_t i=0;i<count;i++){
+  uint32_t n=MEM32(buffers+i*8),p=MEM32(buffers+i*8+4);
+  if(n>16777216||bytes+n>16777216||(n&&!gm_accessible(p,n,1))){g_wsa_error=10014;RET(SOCKET_ERROR,7);}
+  vectors[i]=(struct iovec){n?gm_ptr(p):NULL,n};bytes+=n;
+ }
+ struct msghdr message={0};message.msg_iov=vectors;message.msg_iovlen=count;
+ ssize_t received=recvmsg(fd,&message,MSG_DONTWAIT|(MEM32(flags)&1?MSG_OOB:0)|(MEM32(flags)&2?MSG_PEEK:0));if(received<0)FAIL(7);
+ MEM32(out)=(uint32_t)received;MEM32(flags)=message.msg_flags&MSG_OOB?1:0;if(message.msg_flags&MSG_TRUNC){g_wsa_error=10040;RET(SOCKET_ERROR,7);}RET(0,7);
+}
+
 static void w_recvfrom(void) {                           /* (s, buf, len, flags, from, &fromlen) */
     struct sockaddr_in a;
     socklen_t al = sizeof a;
@@ -352,6 +397,7 @@ static void w_EnumProtocolsA(void) {
 
 #define SHIM2(ord, name, fn) { "wsock32.dll#" #ord, fn }, { name, fn }
 const win32hle_shim win32hle_wsock32[] = {
+    {"WSASend",w_WSASend},{"WSARecv",w_WSARecv},
     {"WSASocketA", w_WSASocket}, {"WSASocketW", w_WSASocket},
     SHIM2(1111, "EnumProtocolsA", w_EnumProtocolsA),
     SHIM2(2, "bind", w_bind),
@@ -414,5 +460,12 @@ int cs16_probe_network(void){
  uint32_t contains[]={receive_socket,fdset};N_CHECK(ncall("__WSAFDIsSet",2,contains));uint32_t bytes=gm_va(gm_calloc(1,20));MEM32(bytes)=MEM32(bytes+16)=0xcafebabe;uint32_t read_args[]={receive_socket,bytes+4,12,0,0,0};N_CHECK(ncall("recvfrom",6,read_args)==6&&!memcmp(gm_ptr(bytes+4),"CS16!",6)&&MEM32(bytes)==0xcafebabe&&MEM32(bytes+16)==0xcafebabe);
  MEM32(fdset)=1;MEM32(timeout)=0;N_CHECK(!ncall("select",5,poll_args)&&!MEM32(fdset));
  uint32_t option=gm_va(gm_calloc(1,4));uint32_t opt_args[]={receive_socket,0xffff,0xdead,option,4};N_CHECK(ncall("setsockopt",5,opt_args)==SOCKET_ERROR&&ncall("WSAGetLastError",0,NULL)==10042);
- N_CHECK(!ncall("closesocket",1,&send_socket)&&!ncall("closesocket",1,&receive_socket));printf("{\"networkProbe\":true,\"adapterSnapshotBoundsAndHostMatch\":true,\"loopbackOnly\":true,\"bothDllOrdinalAliases\":true,\"nameOrdinalIdentity\":true,\"stdcallStackCleanup\":true,\"udpPayloadRoundtrip\":true,\"windowsFdSetLayout\":true,\"timeoutPreserved\":true,\"unsupportedOptionRejected\":true,\"bufferBounds\":true}\n");return 0;
+ uint32_t connect_args[]={send_socket,addr,16};N_CHECK(!ncall("connect",3,connect_args));
+ uint32_t vectors=gm_va(gm_calloc(1,16)),transferred=gm_va(gm_calloc(1,4)),flags=gm_va(gm_calloc(1,4));MEM32(vectors)=3;MEM32(vectors+4)=payload;MEM32(vectors+8)=3;MEM32(vectors+12)=payload+3;
+ uint32_t scatter[]={send_socket,vectors,2,transferred,0,0,0};N_CHECK(!ncall("WSASend",7,scatter)&&MEM32(transferred)==6);
+ MEM32(vectors)=2;MEM32(vectors+4)=bytes+4;MEM32(vectors+8)=10;MEM32(vectors+12)=bytes+6;
+ MEM32(fdset)=1;MEM32(timeout)=1;N_CHECK(ncall("select",5,poll_args)==1);
+ uint32_t gather[]={receive_socket,vectors,2,transferred,flags,0,0};uint32_t gathered=ncall("WSARecv",7,gather);fprintf(stderr,"[scatter-probe] result=%08x bytes=%u error=%u guards=%08x/%08x data=%02x%02x%02x%02x%02x%02x\n",gathered,MEM32(transferred),ncall("WSAGetLastError",0,NULL),MEM32(bytes),MEM32(bytes+16),MEM8(bytes+4),MEM8(bytes+5),MEM8(bytes+6),MEM8(bytes+7),MEM8(bytes+8),MEM8(bytes+9));N_CHECK(!gathered&&MEM32(transferred)==6&&!memcmp(gm_ptr(bytes+4),"CS16!",6)&&MEM32(bytes)==0xcafebabe&&MEM32(bytes+16)==0xcafebabe);
+ scatter[5]=1;MEM32(transferred)=0xcafebabe;N_CHECK(ncall("WSASend",7,scatter)==SOCKET_ERROR&&ncall("WSAGetLastError",0,NULL)==10045&&MEM32(transferred)==0xcafebabe);
+ N_CHECK(!ncall("closesocket",1,&send_socket)&&!ncall("closesocket",1,&receive_socket));printf("{\"networkProbe\":true,\"scatterGatherRoundtrip\":true,\"overlappedFailureIsExplicit\":true,\"adapterSnapshotBoundsAndHostMatch\":true,\"loopbackOnly\":true,\"bothDllOrdinalAliases\":true,\"nameOrdinalIdentity\":true,\"stdcallStackCleanup\":true,\"udpPayloadRoundtrip\":true,\"windowsFdSetLayout\":true,\"timeoutPreserved\":true,\"unsupportedOptionRejected\":true,\"bufferBounds\":true}\n");return 0;
 }

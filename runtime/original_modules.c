@@ -11,6 +11,7 @@ extern int (*hle_attach_translated_module)(const pe_image *);
 
 static int map_module(const char *path,pe_image *image){
  const char *name=strrchr(path,'/');name=name?name+1:path;
+ if(!strcasecmp(name,"mp.dll"))return recomp_pe_map_fixed(path,image,0x53000000);
  if(!strcasecmp(name,"filesystem_stdio.dll"))return recomp_pe_map_fixed(path,image,0x40000000);
  if(!strcasecmp(name,"vgui.dll"))return recomp_pe_map_fixed(path,image,0x40100000);
  if(!strcasecmp(name,"Steam.dll"))return recomp_pe_map_fixed(path,image,0x20000000);

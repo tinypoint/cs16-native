@@ -16,6 +16,10 @@ cs16_eh_frame *cs16_eh_enter(uint32_t esp,uint32_t function){
  f->entry_esp=esp;f->function=function;f->call_scope=cs16_guest_call_scope();f->previous=frames;frames=f;return f;
 }
 void cs16_eh_leave(cs16_eh_frame *f){if(frames!=f)hle_fatal("C++ EH host frame ordering mismatch");frames=f->previous;free(f);}
+void cs16_eh_drop_thread(void){
+ while(frames){cs16_eh_frame *drop=frames;frames=drop->previous;free(drop);}
+ current_object=current_info=0;
+}
 static uint32_t funcinfo(uint32_t handler){
  if(!gm_accessible(handler,11,0) || MEM8(handler)!=0xb8)return 0;
  if(MEM8(handler+5)!=0xe9 && !(MEM8(handler+5)==0xff && MEM8(handler+6)==0x25))return 0;
@@ -72,7 +76,7 @@ int cs16_eh_dispatch(uint32_t object,uint32_t info){
    for(unsigned j=0;j<nh;j++){
     uint32_t h=handlers+j*16,type=MEM32(h+4),ct=type?catchable(info,type,MEM32(h)):0;if(type&&!ct)continue;
     cs16_eh_frame *owner=frames;while(owner && owner->entry_esp!=rec+16)owner=owner->previous;
-    if(!owner)hle_fatal("C++ EH catch has no supported host landing pad: record=%08x",rec);
+    if(!owner){fprintf(stderr,"[guest-eh-missing] record=%08x handler=%08x info=%08x catch=%08x\n",rec,MEM32(rec+4),fi,MEM32(h+12));unsigned seen=0;for(cs16_eh_frame *f=frames;f&&seen++<12;f=f->previous)fprintf(stderr,"[guest-eh-frame] entry=%08x function=%08x\n",f->entry_esp,f->function);hle_fatal("C++ EH catch has no supported host landing pad: record=%08x",rec);}
     if(owner->call_scope!=cs16_guest_call_scope())hle_fatal("C++ EH crosses a host callback boundary; not implemented");
     /* Validate the entire unwind path before executing any cleanup. */
     for(unsigned k=0;k<count-1;k++)if(!funcinfo(MEM32(records[k]+4)))hle_fatal("C++ EH crosses an unsupported SEH frame");

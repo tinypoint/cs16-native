@@ -282,6 +282,7 @@ static void g_DeleteObject(void) {
     RET(hle_gdi_dib_delete(h) || 1, 1);
 }
 static void g_GetStockObject(void) { RET(stock((int)A32(0)), 1); }
+extern int hle_gdi_dib_view(uint32_t,uint8_t **,int *,int *,int *,int *);
 static void g_SelectObject(void) {                       /* (hdc, obj) -> the previous of its kind */
     dc_t *d = DC(A32(0));
     uint32_t o = A32(1), old;
@@ -291,7 +292,6 @@ static void g_SelectObject(void) {                       /* (hdc, obj) -> the pr
         old = d->font, d->font = o; RET(old, 2);
     }
     gobj_t *g = GOBJ(o);
-    extern int hle_gdi_dib_view(uint32_t,uint8_t **,int *,int *,int *,int *);
     uint8_t *pixels;int width,height,pitch,bpp;
     if(d && hle_gdi_dib_view(o,&pixels,&width,&height,&pitch,&bpp)) {
         old=d->bitmap?d->bitmap:DEFAULT_BITMAP;d->bitmap=o;
@@ -580,7 +580,61 @@ static void g_StretchBlt(void) { dc_t *d = DC(A32(0)), *s = DC(A32(5)); blt(d,(i
 static void g_CreateCompatibleDC(void) { RET(new_dc(), 1); }   /* a memory DC; a bitmap is selected into it */
 static void g_DeleteDC(void) { hle_gdi_release_dc(A32(0)); RET(1, 1); }
 
+/* Windows glyph bitmap ABI, rasterized from the selected real TrueType font. */
+static void g_GetGlyphOutlineA(void){
+ dc_t *dc=DC(A32(0));uint32_t format=A32(2),metrics=A32(3),capacity=A32(4),buffer=A32(5),matrix=A32(6);
+ if(!dc||!metrics||!gm_accessible(metrics,20,1)||!matrix||!gm_accessible(matrix,16,0)){hle_set_last_error(87);RET(UINT32_MAX,7);}
+ if(MEM32(matrix)!=0x10000||MEM32(matrix+4)||MEM32(matrix+8)||MEM32(matrix+12)!=0x10000||(format!=0&&format!=1&&format!=6)){hle_set_last_error(120);RET(UINT32_MAX,7);}
+ TTF_Font *font=ttf_of(FONT(dc->font));int minx,maxx,miny,maxy,advance;
+ uint32_t character=A32(1);if(!font||character>65535||TTF_GlyphMetrics(font,(Uint16)character,&minx,&maxx,&miny,&maxy,&advance)){hle_set_last_error(87);RET(UINT32_MAX,7);}
+ int width=maxx-minx,height=maxy-miny;if(width<0||height<0||width>4096||height>4096){hle_set_last_error(87);RET(UINT32_MAX,7);}
+ memset(gm_ptr(metrics),0,20);MEM32(metrics)=(uint32_t)width;MEM32(metrics+4)=(uint32_t)height;MEM32(metrics+8)=(uint32_t)minx;MEM32(metrics+12)=(uint32_t)maxy;MEM16(metrics+16)=(uint16_t)advance;
+ if(!format)RET(0,7);
+ uint32_t pitch=format==1?((uint32_t)width+31)/32*4:((uint32_t)width+3)&~3u,bytes=pitch*(uint32_t)height;
+ if(!capacity||!buffer)RET(bytes,7);if(capacity<bytes||!gm_accessible(buffer,bytes,1)){hle_set_last_error(122);RET(UINT32_MAX,7);}
+ if(!bytes)RET(0,7);
+ SDL_Color white={255,255,255,255};SDL_Surface *rendered=TTF_RenderGlyph_Blended(font,(Uint16)character,white);if(!rendered){hle_set_last_error(8);RET(UINT32_MAX,7);}
+ SDL_Surface *surface=SDL_ConvertSurfaceFormat(rendered,SDL_PIXELFORMAT_RGBA32,0);SDL_FreeSurface(rendered);if(!surface){hle_set_last_error(8);RET(UINT32_MAX,7);}
+ uint8_t *out=gm_ptr(buffer);memset(out,0,bytes);int left=minx>0?minx:0,top=TTF_FontAscent(font)-maxy;
+ SDL_LockSurface(surface);
+ for(int y=0;y<height;y++)for(int x=0;x<width;x++){
+  int sx=x+left,sy=y+top;uint8_t alpha=0;
+  if(sx>=0&&sy>=0&&sx<surface->w&&sy<surface->h)alpha=((uint8_t *)surface->pixels)[sy*surface->pitch+sx*4+3];
+  if(format==6)out[(size_t)y*pitch+x]=(uint8_t)((alpha*64u+127u)/255u);else if(alpha>=128)out[(size_t)y*pitch+x/8]|=(uint8_t)(0x80u>>(x&7));
+ }
+ SDL_UnlockSurface(surface);SDL_FreeSurface(surface);RET(bytes,7);
+}
+
+/* Copy the selected bitmap's actual pixels using Windows DIB row order. */
+extern int hle_gdi_dib_view(uint32_t,uint8_t **,int *,int *,int *,int *);
+static void g_GetDIBits(void){
+ uint32_t info=A32(5),bits=A32(4),start=A32(2),count=A32(3);gobj_t *object=GOBJ(A32(1));
+ uint8_t *pixels=NULL;int width=0,height=0,pitch=0,depth=0;
+ if(object&&object->type==GO_BITMAP){pixels=object->px;width=object->w;height=object->h;pitch=object->pitch;depth=object->bpp;}
+ else hle_gdi_dib_view(A32(1),&pixels,&width,&height,&pitch,&depth);
+ if(!pixels||!info||!gm_accessible(info,40,1)||MEM32(info)<40||A32(6)||width<1||height<1||(depth!=16&&depth!=24&&depth!=32)){hle_set_last_error(87);RET(0,7);}
+ uint32_t output_depth=MEM16(info+14);if(!output_depth)output_depth=32;
+ if(output_depth!=24&&output_depth!=32){hle_set_last_error(120);RET(0,7);}
+ int topdown=(int32_t)MEM32(info+8)<0;
+ uint64_t stride=(((uint64_t)width*output_depth+31)/32)*4;
+ if(stride*(unsigned)height>UINT32_MAX){hle_set_last_error(87);RET(0,7);}
+ MEM32(info+4)=(uint32_t)width;MEM32(info+8)=topdown?(uint32_t)-height:(uint32_t)height;MEM16(info+12)=1;MEM16(info+14)=(uint16_t)output_depth;MEM32(info+16)=0;MEM32(info+20)=(uint32_t)(stride*height);MEM32(info+32)=0;MEM32(info+36)=0;
+ if(!bits)RET(1,7);if(start>=(uint32_t)height)RET(0,7);if(count>(uint32_t)height-start)count=(uint32_t)height-start;
+ if(!count)RET(0,7);if(!gm_accessible(bits,(uint32_t)(stride*count),1)){hle_set_last_error(122);RET(0,7);}
+ uint8_t *out=gm_ptr(bits);memset(out,0,(size_t)stride*count);
+ for(uint32_t y=0;y<count;y++){
+  int row=topdown?(int)(start+y):height-1-(int)(start+y);const uint8_t *source=pixels+(ptrdiff_t)row*pitch;
+  for(int x=0;x<width;x++){
+   unsigned r,g,b;if(depth==16){uint16_t p;memcpy(&p,source+x*2,2);r=((p>>11)&31)*255/31;g=((p>>5)&63)*255/63;b=(p&31)*255/31;}else{b=source[x*(depth/8)];g=source[x*(depth/8)+1];r=source[x*(depth/8)+2];}
+   uint8_t *p=out+(size_t)y*stride+x*(output_depth/8);p[0]=(uint8_t)b;p[1]=(uint8_t)g;p[2]=(uint8_t)r;
+  }
+ }
+ RET(count,7);
+}
+
 const win32hle_shim win32hle_gdidc[] = {
+    { "GetDIBits", g_GetDIBits },
+    { "GetGlyphOutlineA", g_GetGlyphOutlineA },
     { "EnumFontFamiliesExA", g_EnumFontFamiliesExA },
     { "GetCharABCWidthsW", g_GetCharABCWidthsW },
     { "SetMapMode", g_SetMapMode },{ "LPtoDP", g_LPtoDP },{ "DPtoLP", g_DPtoLP },

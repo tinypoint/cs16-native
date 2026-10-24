@@ -157,7 +157,7 @@ static void k_HeapCreate(void)  { RET(0x00000001u, 3); }
 static void k_HeapDestroy(void) { RET(1, 1); }
 static void k_HeapAlloc(void) {                          /* (hHeap, flags, size) */
     void *p = blk_alloc(A32(2), (A32(1) & HEAP_ZERO_MEMORY) != 0);
-    if (!p) g_last_error = ERROR_NOT_ENOUGH_MEMORY;
+    if (!p) {g_last_error = ERROR_NOT_ENOUGH_MEMORY;fprintf(stderr,"[heap-failed] size=%u from=%08x\n",A32(2),g_cur_func);}
     RETP(p, 3);
 }
 static void k_HeapFree(void) { blk_free(APTR(2)); RET(1, 3); }   /* (hHeap, flags, ptr) */
@@ -206,7 +206,7 @@ static void k_VirtualAlloc(void) {                       /* (addr, size, type, p
     }
     if (!base || ((type&MEM_COMMIT) && !gm_commit(base,size,A32(3)))) {
         if (base && reserved) gm_release(base);
-        g_last_error=ERROR_NOT_ENOUGH_MEMORY;RET(0,4);
+        fprintf(stderr,"[virtual-alloc-failed] address=%08x bytes=%u type=%x protection=%x\n",addr,size,type,A32(3));g_last_error=ERROR_NOT_ENOUGH_MEMORY;RET(0,4);
     }
     RET(base,4);
 }

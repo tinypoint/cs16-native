@@ -47,6 +47,10 @@ int win32hle_trace;
 
 void hle_fatal(const char *fmt, ...) {
     va_list ap; va_start(ap, fmt);
+#ifdef __EMSCRIPTEN__
+    extern void cs16_web_record_fatal(const char *,uint32_t);
+    va_list copy;va_copy(copy,ap);char message[2048];vsnprintf(message,sizeof message,fmt,copy);va_end(copy);cs16_web_record_fatal(message,g_cur_func);
+#endif
     fprintf(stderr, "[win32hle] FATAL: ");
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
@@ -163,6 +167,13 @@ void hle_drop_thread_state(void) {
         gm_free(gm_ptr(g_ms.stack_base));gm_free(gm_ptr(g_ms.tib_base));
         memset(&g_ms,0,sizeof g_ms);
     }
+}
+
+/* ExitThread never returns through hle_call_guest. Release ownership before
+ * destroying this thread's guest stack, and discard its callback scope. */
+void hle_abandon_thread_state(void){
+ if(g_ms.depth){g_ms.depth=1;mach_leave();}
+ guest_call_scope=0;hle_drop_thread_state();
 }
 
 /* Give the machine up around a wait (a Sleep, an event, a contended critical

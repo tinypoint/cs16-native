@@ -165,30 +165,7 @@ int gm_accessible(uint32_t va,uint32_t size,int write_access) {
     }
     pthread_mutex_unlock(&lock);return ok;
 }
-void *gm_alloc(size_t size) {
-    if (size>UINT32_MAX) return NULL;
-    uint32_t va=gm_reserve(0,(uint32_t)(size?size:1));
-    if (!va) return NULL;
-    if (!gm_commit(va,(uint32_t)(size?size:1),0x04)) {gm_release(va);return NULL;}
-    return gm_ptr(va);
-}
-void *gm_calloc(size_t n,size_t size) {
-    if (size && n>SIZE_MAX/size) return NULL;
-    return gm_alloc(n*size); /* fresh anonymous memory is zero */
-}
-void gm_free(void *p) {
-    if (p && !gm_release(gm_va(p))) fail("free is not an allocation base");
-}
-void *gm_realloc(void *p,size_t size) {
-    if (!p) return gm_alloc(size);
-    if (!size) {gm_free(p);return NULL;}
-    uint32_t va=gm_va(p);size_t start=va/page,old;
-    pthread_mutex_lock(&lock);old=spans[start]*page;pthread_mutex_unlock(&lock);
-    if (!old || va%page) fail("realloc is not an allocation base");
-    void *q=gm_alloc(size);
-    if (q) {memcpy(q,p,old<size?old:size);gm_free(p);}
-    return q;
-}
+#include "guest_heap.inc"
 char *gm_strdup(const char *s) {
     size_t n=strlen(s)+1;char *p=gm_alloc(n);if (p) memcpy(p,s,n);return p;
 }

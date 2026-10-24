@@ -3,15 +3,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<title>Counter-Strike 1.6 · Wasm 首帧实验</title>
-<link rel="stylesheet" href="style.css?v=0.0.3">
+<title>Counter-Strike 1.6 · Wasm 开发版</title>
+<link rel="stylesheet" href="style.css?v=0.0.4">
 <body>
 <main id="game-window"><div id="stage">
  <canvas id="display" width="640" height="480" aria-label="原程序在 Wasm 中绘制的画面"></canvas>
  <div id="notice" role="status" aria-live="polite"><p id="status">正在载入原程序…</p></div>
- <small id="version">v0.0.3</small>
+ <small id="version">v0.0.4</small>
 </div></main>
+<button id="touch-toggle" hidden type="button" aria-pressed="false">触控</button>
+<button id="mouse-lock" hidden type="button" aria-label="锁定鼠标以转动视角">鼠标</button>
+<div id="touch-controls" hidden>
+ <div id="move-pad" aria-label="移动摇杆"><span id="move-knob"></span></div>
+ <div id="actions">
+  <button data-mouse="1">开火</button><button data-mouse="2">副攻</button>
+  <button data-key="32" data-scan="57">跳跃</button><button data-key="82" data-scan="19">换弹</button>
+  <button data-key="17" data-scan="29">蹲下</button><button data-key="69" data-scan="18">使用</button>
+ </div>
+ <button id="game-menu" data-key="27" data-scan="1">菜单</button>
+</div>
 <canvas id="canvas" width="640" height="480" aria-hidden="true"></canvas>
-<script src="app.js?v=0.0.3"></script>
+<script src="app.js?v=0.0.4"></script>
 </body>
 </html>

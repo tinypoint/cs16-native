@@ -88,7 +88,7 @@ int main(int argc,char **argv){
  if(!alternate.ss_sp || sigaltstack(&alternate,NULL))return 2;
  struct sigaction sa={0};sa.sa_sigaction=fault;sa.sa_flags=SA_SIGINFO|SA_ONSTACK;
  sigaction(SIGSEGV,&sa,NULL);sigaction(SIGBUS,&sa,NULL);sigaction(SIGABRT,&sa,NULL);
- signal(SIGALRM,timeout);alarm(15);
+ signal(SIGALRM,timeout);unsigned seconds=getenv("CS16_WATCHDOG_SECONDS")?(unsigned)strtoul(getenv("CS16_WATCHDOG_SECONDS"),NULL,10):15;alarm(seconds?seconds:15);
  win32hle_register(win32hle_kernel32);win32hle_register(win32hle_kernel32_crt);
  win32hle_register(win32hle_kernel32_ext);win32hle_register(win32hle_module);
  win32hle_register(win32hle_winmm);win32hle_register(win32hle_wsock32);win32hle_register(win32hle_advapi32);
@@ -100,12 +100,15 @@ int main(int argc,char **argv){
  win32hle_register(win32hle_version);
  cs16_original_modules_install();
  cs16_native_window_install();
+#ifdef CS16_OFFLINE_GAME_PROBE
+ extern void cs16_offline_probe_pump(void);hle_set_pump_hook(cs16_offline_probe_pump);
+#endif
  cs16_opengl_register();
  cs16_webbrowser_install();
  win32hle_register(win32hle_crypto_random);win32hle_register(win32hle_iphlpapi);
  static const win32hle_shim diagnostics[]={{"MessageBoxA",messagebox},{0,0}};win32hle_register(diagnostics);
  char directory[4096];if(!getcwd(directory,sizeof directory))return 2;
- hle_set_drive('C',directory);hle_set_command_line(getenv("CS16_CONSOLE")?"hl.exe -game cstrike -console -windowed":"hl.exe -game cstrike -windowed");
+ hle_set_drive('C',directory);hle_set_command_line(getenv("CS16_COMMAND_LINE")?getenv("CS16_COMMAND_LINE"):getenv("CS16_CONSOLE")?"hl.exe -game cstrike -console -windowed":"hl.exe -game cstrike -windowed");
  pe_image image={0};if(recomp_pe_map(argv[1],&image))return 3;
  char guest[4096];hle_guest_path(argv[1],guest,sizeof guest);
  hle_module_add(guest,image.base,image.resource_rva,image.resource_size,1);

@@ -32,6 +32,7 @@ def main():
             if stage.exists():raise RuntimeError('Partial staging copy; inspect before retrying')
             shutil.copytree(source,stage)
     names={'hl':'hl.exe','filesystem':'FileSystem_Stdio.dll','vgui':'vgui.dll','steam':'Steam.dll','mss32':'Mss32.dll','dbg':'dbg.dll','hw':'hw.dll','cstrike-client':'cstrike/cl_dlls/client.dll','particleman':'valve/cl_dlls/particleman.dll'}
+    names['mp']='cstrike/dlls/mp.dll'
     names.update({'vgui2':'vgui2.dll','gameui':'valve/cl_dlls/GameUI.dll','demoplayer':'DemoPlayer.dll','mp3dec':'Mp3dec.asi','mssv29':'Mssv29.asi','mssv12':'Mssv12.asi','voice-miles':'voice_miles.dll','core':'core.dll','swda':'swda.dll','trackerui':'platform/Friends/TrackerUI.dll','serverbrowser':'platform/Servers/ServerBrowser.dll','trackernet':'platform/Friends/TrackerNET.dll','steamclient':'steamclient.dll','vstdlib':'vstdlib_s.dll','tier0':'tier0_s.dll'})
     hashes={}
     for module,name in names.items():

@@ -91,6 +91,12 @@ static void *thread_trampoline(void *p) {
     /* pthread-key destruction signals completion and releases thread ownership. */
     return NULL;
 }
+extern void hle_abandon_thread_state(void);
+extern void cs16_eh_drop_thread(void);
+static void k_ExitThread(void){
+ thread_t *t=current_thread();if(!t)hle_fatal("ExitThread state unavailable");t->result=A32(0);
+ cs16_eh_drop_thread();hle_abandon_thread_state();pthread_exit(NULL);
+}
 static void k_CreateThread(void) {             /* (sa, stack, start, param, flags, &tid) */
     if (!A32(2) || A32(1)>(4u<<20) || (A32(4)&~4u)) {
         hle_set_last_error(ERROR_INVALID_PARAMETER);RET(0,6);
@@ -598,6 +604,7 @@ static void k_RaiseException(void) {
 static void k_LoadModule(void)    { RET(2u, 2); }               /* file not found */
 
 const win32hle_shim win32hle_kernel32_crt[] = {
+    {"ExitThread",k_ExitThread},
     { "GetStdHandle",                 k_GetStdHandle },
     { "SetStdHandle",                 k_SetStdHandle },
     { "SetHandleCount",               k_SetHandleCount },

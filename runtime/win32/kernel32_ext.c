@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <sys/sysctl.h>
+#include <sys/resource.h>
 #include "win32hle.h"
 
 #define INVALID_HANDLE  0xFFFFFFFFu
@@ -207,6 +208,63 @@ static void k_GetFileType(void) {
     uint32_t h = A32(0);
     if (h >= 0x11u && h <= 0x13u) RET(isatty(fd_of(h)) ? 2u : 1u, 1);   /* CHAR / DISK */
     RET(hle_handle_obj(h, HLE_H_FILE) ? 1u : 0u, 1);
+}
+
+/* Read-only mappings of ordinary files. Views own their backing bytes after
+ * either handle is closed; paging-file and writable mappings fail explicitly. */
+enum { HLE_H_MAPPING = HLE_H_OTHER + 1 };
+typedef struct file_mapping {int fd;uint32_t size;char *name;struct file_mapping *next;} file_mapping;
+static file_mapping *file_mappings;
+static struct {uint32_t address;void *bytes;} file_views[256];
+static void mapping_close(void *object){
+ file_mapping *m=object;
+ file_mapping **link=&file_mappings;while(*link&&*link!=m)link=&(*link)->next;if(*link)*link=m->next;
+ close(m->fd);free(m->name);free(m);
+}
+static uint32_t mapping_handle(file_mapping *m){
+ hle_handle_set_closer(HLE_H_MAPPING,mapping_close);uint32_t h=hle_handle_alloc(HLE_H_MAPPING,m);return h;
+}
+static void k_OpenFile(void){
+ uint32_t info=A32(1),flags=A32(2);const char *name=ASTR(0);char path[1024];
+ if(info){if(!gm_accessible(info,136,1)){hle_set_last_error(87);RET(INVALID_HANDLE,3);}memset(gm_ptr(info),0,136);MEM8(info)=136;}
+ if(flags&~0x70u){hle_set_last_error(120);RET(INVALID_HANDLE,3);}
+ if(!name||!hle_host_path(name,path,sizeof path)){hle_set_last_error(2);if(info)MEM16(info+2)=2;RET(INVALID_HANDLE,3);}
+ int fd=open(path,O_RDONLY|O_CLOEXEC);if(fd<0){uint32_t e=errno_to_win(errno);hle_set_last_error(e);if(info)MEM16(info+2)=e;RET(INVALID_HANDLE,3);}
+ if(info){MEM8(info+1)=1;snprintf((char *)gm_ptr(info+8),128,"%s",name);}
+ RET(new_file(fd),3);
+}
+static void k_CreateFileMappingA(void){
+ const char *name=ASTR(5);
+ if(name&&*name)for(file_mapping *m=file_mappings;m;m=m->next)if(m->name&&!strcmp(name,m->name)){uint32_t h=mapping_handle(m);hle_set_last_error(h?183:8);RET(h,6);}
+ if(A32(0)==INVALID_HANDLE||A32(2)!=2||A32(3)){hle_set_last_error(120);RET(0,6);}
+ int fd=fd_of(A32(0));struct stat st;if(fd<0||fstat(fd,&st)||st.st_size<0){hle_set_last_error(6);RET(0,6);}
+ if(!st.st_size){hle_set_last_error(1006);RET(0,6);}
+ uint64_t size=A32(4)?A32(4):(uint64_t)st.st_size;
+ if(size>(uint64_t)st.st_size||size>UINT32_MAX){hle_set_last_error(5);RET(0,6);}
+ int duplicate=dup(fd);if(duplicate<0){hle_set_last_error(errno_to_win(errno));RET(0,6);}
+ file_mapping *m=calloc(1,sizeof *m);if(!m){close(duplicate);hle_set_last_error(8);RET(0,6);}
+ m->fd=duplicate;m->size=(uint32_t)size;m->name=name&&*name?strdup(name):NULL;m->next=file_mappings;file_mappings=m;
+ uint32_t h=mapping_handle(m);if(!h){mapping_close(m);hle_set_last_error(8);RET(0,6);}hle_set_last_error(0);RET(h,6);
+}
+static void k_OpenFileMappingA(void){
+ if(A32(0)!=4){hle_set_last_error(120);RET(0,3);}const char *name=ASTR(2);
+ if(name)for(file_mapping *m=file_mappings;m;m=m->next)if(m->name&&!strcmp(name,m->name)){uint32_t h=mapping_handle(m);hle_set_last_error(h?0:8);RET(h,3);}
+ hle_set_last_error(2);RET(0,3);
+}
+static void k_MapViewOfFile(void){
+ file_mapping *m=hle_handle_obj(A32(0),HLE_H_MAPPING);if(!m){hle_set_last_error(6);RET(0,5);}
+ uint32_t offset=A32(3),bytes=A32(4);if(A32(1)!=4||A32(2)||offset%65536||offset>=m->size){hle_set_last_error(87);RET(0,5);}
+ if(!bytes)bytes=m->size-offset;if((uint64_t)offset+bytes>m->size){hle_set_last_error(87);RET(0,5);}
+ unsigned slot;for(slot=0;slot<256&&file_views[slot].address;slot++);if(slot==256){hle_set_last_error(8);RET(0,5);}
+ uint32_t reserved=gm_reserve(0,bytes);if(!reserved||!gm_commit(reserved,bytes,4)){if(reserved)gm_release(reserved);hle_set_last_error(8);RET(0,5);}void *data=gm_ptr(reserved);
+ size_t done=0;while(done<bytes){ssize_t n=pread(m->fd,(char *)data+done,bytes-done,(off_t)offset+done);if(n<0&&errno==EINTR)continue;if(n<=0){gm_free(data);hle_set_last_error(30);RET(0,5);}done+=(size_t)n;}
+ uint32_t address=gm_va(data),old;uint32_t span=(uint32_t)(((uint64_t)bytes+gm_page_size()-1)/gm_page_size()*gm_page_size());
+ if(!gm_protect(address,span,2,&old)){gm_free(data);hle_set_last_error(87);RET(0,5);}
+ file_views[slot].address=address;file_views[slot].bytes=data;hle_set_last_error(0);RET(address,5);
+}
+static void k_UnmapViewOfFile(void){
+ for(unsigned i=0;i<256;i++)if(file_views[i].address==A32(0)&&A32(0)){gm_free(file_views[i].bytes);memset(&file_views[i],0,sizeof file_views[i]);hle_set_last_error(0);RET(1,1);}
+ hle_set_last_error(487);RET(0,1);
 }
 
 /* ---- FILETIME (100 ns since 1601) and SYSTEMTIME ---- */
@@ -667,7 +725,18 @@ static void k_IsDebuggerPresent(void){
  if(sysctl(name,4,&process,&size,NULL,0)||size!=sizeof process)hle_fatal("Unable to query host debugger state");
  RET((process.kp_proc.p_flag&P_TRACED)!=0,0);
 }
+/* Actual current-process times in the Windows 100 ns FILETIME ABI. */
+static void k_GetProcessTimes(void){
+ if(A32(0)!=UINT32_MAX){hle_set_last_error(6);RET(0,5);}
+ for(unsigned i=1;i<=4;i++)if(!A32(i)||!gm_accessible(A32(i),8,1)){hle_set_last_error(998);RET(0,5);}
+ struct kinfo_proc process={0};size_t bytes=sizeof process;int query[]={CTL_KERN,KERN_PROC,KERN_PROC_PID,getpid()};struct rusage usage;
+ if(sysctl(query,4,&process,&bytes,NULL,0)||bytes!=sizeof process||getrusage(RUSAGE_SELF,&usage)){hle_set_last_error(31);RET(0,5);}
+ uint64_t values[]={((uint64_t)process.kp_proc.p_starttime.tv_sec+11644473600ULL)*10000000ULL+(uint64_t)process.kp_proc.p_starttime.tv_usec*10,0,(uint64_t)usage.ru_stime.tv_sec*10000000ULL+(uint64_t)usage.ru_stime.tv_usec*10,(uint64_t)usage.ru_utime.tv_sec*10000000ULL+(uint64_t)usage.ru_utime.tv_usec*10};
+ for(unsigned i=0;i<4;i++){MEM32(A32(i+1))=(uint32_t)values[i];MEM32(A32(i+1)+4)=(uint32_t)(values[i]>>32);}RET(1,5);
+}
 const win32hle_shim win32hle_kernel32_ext[] = {
+    {"GetProcessTimes",k_GetProcessTimes},
+    {"OpenFile",k_OpenFile},{"CreateFileMappingA",k_CreateFileMappingA},{"OpenFileMappingA",k_OpenFileMappingA},{"MapViewOfFile",k_MapViewOfFile},{"UnmapViewOfFile",k_UnmapViewOfFile},
     { "IsDebuggerPresent", k_IsDebuggerPresent },
     { "GetFullPathNameA", k_GetFullPathNameA },
     { "_lopen", k__lopen }, { "_lcreat", k__lcreat }, { "_lread", k__lread },

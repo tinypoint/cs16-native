@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish only a verified original-Wasm first-frame experiment to CS Vercel."""
+"""Publish only an asset-bound verified original-Wasm experiment to CS Vercel."""
 import base64,hashlib,json,os,re,subprocess,tempfile,urllib.parse
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
@@ -18,11 +18,12 @@ def upload(path,sha):
  return path.name,path.stat().st_size
 
 def main():
- site=ROOT/'.local/web-publish';verification=json.loads((site/'verification.json').read_text());assert verification['verified'] and verification['mode']=='first-frame-only'
- proof=ROOT/'logs/web-browser-first.json';assert hashlib.sha256(proof.read_bytes()).hexdigest()==verification['proofSha256'],'Proof changed after packaging'
+ site=ROOT/'.local/web-publish';verification=json.loads((site/'verification.json').read_text());assert verification['verified'] and verification['mode'] in ('first-frame-only','offline-map-interaction')
+ proof=ROOT/('logs/web-browser-gameplay.json' if verification['mode']=='offline-map-interaction' else 'logs/web-browser-first.json');assert hashlib.sha256(proof.read_bytes()).hexdigest()==verification['proofSha256'],'Proof changed after packaging'
  project=json.loads((ROOT/'.local/web-access/vercel-project.json').read_text())['project'];assert project['projectName']=='cs16-web'
  manifest=json.loads((site/'manifest.json').read_text());preview=manifest['preview']
  allowed=['index.html','app.js','style.css','manifest.json','vercel.json',preview['base'].lstrip('/')+'cs16-web.js',preview['runtime']['url'].lstrip('/'),preview['resources']['url'].lstrip('/')]
+ allowed += [part['url'].lstrip('/') for part in preview.get('gameplay',[])]
  files=[];large=[]
  for relative_name in sorted(allowed):
   path=site/relative_name
@@ -43,7 +44,7 @@ def main():
   hashes=set(re.findall(r'\b[0-9a-f]{40}\b',json.dumps(details)))
   needed=[item for item in large if not hashes or item[1] in hashes]
   print('Missing content-addressed uploads:',len(needed),flush=True)
-  with ThreadPoolExecutor(max_workers=2) as pool:
+  with ThreadPoolExecutor(max_workers=4) as pool:
    for name,size in pool.map(lambda item:upload(*item),needed):print('Uploaded',name,size,'bytes',flush=True)
   result=api('POST','/v13/deployments',body)
  path=ROOT/'.local/web-access/vercel-deployment.json';path.write_text(json.dumps(result,indent=2)+'\n');path.chmod(0o600)

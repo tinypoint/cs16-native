@@ -30,12 +30,18 @@ static void setup(void){
 }
 int gm_init(void){pthread_once(&once,setup);return initialized;}
 size_t gm_page_size(void){return gm_init()?page:0;}
-static void fail(const char *what){fprintf(stderr,"[guest-memory-web] %s\n",what);abort();}
-void *gm_ptr(uint32_t va){
- if(!va)return NULL;
- if(!gm_init()||va<0x10000||!pages[va/PAGE])fail("unmapped guest pointer");
+extern void cs16_web_record_fatal(const char *,uint32_t) __attribute__((weak));
+static void fail(const char *what){fprintf(stderr,"[guest-memory-web] %s\n",what);if(cs16_web_record_fatal)cs16_web_record_fatal(what,0);abort();}
+extern uint32_t g_cur_func __attribute__((weak));
+extern uint32_t g_icall_trace_idx __attribute__((weak)),g_icall_from[] __attribute__((weak)),g_icall_trace[] __attribute__((weak));
+static inline __attribute__((always_inline)) void *translate_pointer(uint32_t va,int optional){
+ if(optional&&!va)return NULL;
+ if((!initialized&&!gm_init())||va<0x10000||!pages[va/PAGE]){fprintf(stderr,"[guest-memory-web] address=%08x function=%08x\n",va,&g_cur_func?g_cur_func:0);if(&g_icall_trace_idx)for(unsigned k=0;k<12;k++){unsigned n=(g_icall_trace_idx-12+k)&127;fprintf(stderr,"[guest-memory-chain] %08x -> %08x\n",g_icall_from[n],g_icall_trace[n]);}fail("unmapped guest pointer");}
  return pages[va/PAGE]+va%PAGE;
 }
+void *gm_ptr(uint32_t va){return translate_pointer(va,1);}
+void *cs16_guest_deref(uint32_t va){return translate_pointer(va,0);}
+
 uint32_t gm_va(const void *p){
  if(!p)return 0;if(!gm_init())fail("uninitialized mapping");uintptr_t pointer=(uintptr_t)p;
  pthread_mutex_lock(&lock);unsigned lo=0,hi=allocation_count;
@@ -78,6 +84,7 @@ uint32_t gm_reserve(uint32_t preferred,uint32_t size) {
     for(size_t k=0;k<n;k++){owner[start+k]=(uint32_t)start+1;pages[start+k]=backing+k*PAGE;}
     spans[start]=(uint32_t)n;
 done:
+    if(!start)fprintf(stderr,"[guest-reserve-failed] preferred=%08x size=%u allocations=%u\n",preferred,size,allocation_count);
     pthread_mutex_unlock(&lock);
     return (uint32_t)(start*page);
 }
@@ -154,30 +161,7 @@ int gm_accessible(uint32_t va,uint32_t size,int write_access) {
     }
     pthread_mutex_unlock(&lock);return ok;
 }
-void *gm_alloc(size_t size) {
-    if (size>UINT32_MAX) return NULL;
-    uint32_t va=gm_reserve(0,(uint32_t)(size?size:1));
-    if (!va) return NULL;
-    if (!gm_commit(va,(uint32_t)(size?size:1),0x04)) {gm_release(va);return NULL;}
-    return gm_ptr(va);
-}
-void *gm_calloc(size_t n,size_t size) {
-    if (size && n>SIZE_MAX/size) return NULL;
-    return gm_alloc(n*size); /* fresh anonymous memory is zero */
-}
-void gm_free(void *p) {
-    if (p && !gm_release(gm_va(p))) fail("free is not an allocation base");
-}
-void *gm_realloc(void *p,size_t size) {
-    if (!p) return gm_alloc(size);
-    if (!size) {gm_free(p);return NULL;}
-    uint32_t va=gm_va(p);size_t start=va/page,old;
-    pthread_mutex_lock(&lock);old=spans[start]*page;pthread_mutex_unlock(&lock);
-    if (!old || va%page) fail("realloc is not an allocation base");
-    void *q=gm_alloc(size);
-    if (q) {memcpy(q,p,old<size?old:size);gm_free(p);}
-    return q;
-}
+#include "guest_heap.inc"
 char *gm_strdup(const char *s) {
     size_t n=strlen(s)+1;char *p=gm_alloc(n);if (p) memcpy(p,s,n);return p;
 }

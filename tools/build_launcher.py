@@ -13,8 +13,8 @@ from migration_patches import materialize
 ROOT=Path(__file__).resolve().parents[1];GEN=ROOT/'.local/lift/hl';OUT=ROOT/'.local/launcher-native'
 
 def main():
-    ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--diagnostic',action='store_true',help='Allow modules with reported semantic gaps; unsupported instructions still abort');ap.add_argument('--profile-entries',action='store_true',help='Record every reached original function using the optional runtime profiler');args=ap.parse_args()
-    modules=[GEN,*[ROOT/'.local/lift'/name for name in ('filesystem','vgui','steam','mss32','dbg','hw','cstrike-client','particleman','vgui2','gameui','demoplayer','mp3dec','mssv29','mssv12','voice-miles','core','swda','trackerui','serverbrowser','trackernet','steamclient','vstdlib','tier0')]]
+    ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--diagnostic',action='store_true',help='Allow modules with reported semantic gaps; unsupported instructions still abort');ap.add_argument('--offline-game-probe',action='store_true');ap.add_argument('--profile-entries',action='store_true',help='Record every reached original function using the optional runtime profiler');args=ap.parse_args()
+    modules=[GEN,*[ROOT/'.local/lift'/name for name in ('filesystem','vgui','steam','mss32','dbg','hw','cstrike-client','particleman','vgui2','gameui','demoplayer','mp3dec','mssv29','mssv12','voice-miles','core','swda','trackerui','serverbrowser','trackernet','steamclient','vstdlib','tier0','mp')]]
     for module in modules:
         result=json.loads((module/'result.json').read_text())
         if result['generationErrors'] or (not args.diagnostic and any(result[k] for k in ('unimplementedInstructions','uncleanExtents'))):
@@ -46,13 +46,16 @@ def main():
     if not all((frameworks/(name+'.framework/Headers')).exists() for name in ('SDL2','SDL2_ttf')):
         raise SystemExit('Install native display dependencies with tools/setup_native_display.py first')
     flags+=['-F',str(frameworks),'-I',str(frameworks/'SDL2.framework/Headers')]
+    if args.offline_game_probe:
+        sources.append(ROOT/'tools/native_offline_probe.c')
     signature=hashlib.sha256((' '.join(flags)).encode()+b''.join(p.read_bytes() for folder in [ROOT/'runtime/win32',ROOT/'runtime/guest',ROOT/'runtime/platform',ROOT/'vendor/pcrecomp/runtime/recomp32'] for p in sorted(folder.glob('*.h')))).digest()
     def build(source):
         name=source.stem+'-'+hashlib.sha256(str(source.relative_to(ROOT)).encode()).hexdigest()[:12]
         headers=b''.join(p.read_bytes() for pattern in ('*.h','*.inc') for p in sorted(source.parent.glob(pattern)))
-        target=obj/(name+'.o');stamp=target.with_suffix('.sha');digest=hashlib.sha256(signature+headers+source.read_bytes()).hexdigest()
+        probe_flags=['-DCS16_OFFLINE_GAME_PROBE=1'] if args.offline_game_probe and source.name=='launcher_host.c' else []
+        target=obj/(name+'.o');stamp=target.with_suffix('.sha');digest=hashlib.sha256(signature+' '.join(probe_flags).encode()+headers+source.read_bytes()+((ROOT/'runtime/guest/guest_heap.inc').read_bytes() if source.name=='guest_memory.c' else b'')).hexdigest()
         if target.exists() and stamp.exists() and stamp.read_text()==digest:return target
-        p=subprocess.run([*flags,*(['-fobjc-arc','-fblocks'] if source.suffix=='.m' else []),'-c',str(source),'-o',str(target)],capture_output=True,text=True,timeout=300)
+        p=subprocess.run([*flags,*probe_flags,*(['-fobjc-arc','-fblocks'] if source.suffix=='.m' else []),'-c',str(source),'-o',str(target)],capture_output=True,text=True,timeout=300)
         (OUT/(name+'.log')).write_text(p.stdout+p.stderr)
         if p.returncode:raise RuntimeError(source.name+': '+p.stderr[-1800:])
         stamp.write_text(digest);return target
