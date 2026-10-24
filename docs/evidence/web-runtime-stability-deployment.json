@@ -1,0 +1,11 @@
+{
+  "version": "0.0.7",
+  "deploymentId": "dpl_984Nj4KTEkKxu4aJwEH2hJ57ai7v",
+  "url": "https://cs16-native.vercel.app/",
+  "readyState": "READY",
+  "frontendMatchesVerifiedAssets": true,
+  "resourceFilesChecked": 21,
+  "isolationHeaders": true,
+  "gameplayEvidence": "web-runtime-stability.json",
+  "physicalIPhoneRetest": false
+}
