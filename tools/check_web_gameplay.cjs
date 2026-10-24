@@ -48,9 +48,21 @@ const sha=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'
   const turned=await sample('turned');report.checks.turning=Math.hypot(...turned.angles.map((n,i)=>n-moved.angles[i]))>2;await shot('turned');
   const fire=await page.locator('[data-mouse="1"]').boundingBox();await page.mouse.move(fire.x+fire.width/2,fire.y+fire.height/2);await page.mouse.down();await page.waitForTimeout(700);await page.mouse.up();await page.waitForTimeout(500);
   const fired=await sample('fired');report.checks.firing=fired.weaponId===turned.weaponId&&fired.clip<turned.clip&&fired.weaponUpdates>turned.weaponUpdates;await shot('fired');
+  if(process.env.CS16_TEST_LONG_MOVEMENT==='1'){
+   report.checks.windowsUpdaterDisabled=report.logs.some(line=>line.includes('[web-updater] Windows package automatic updater disabled in browser'));
+   await page.evaluate(()=>{window.cs16ImageBefore=window.cs16Module.cs16PresentationImage});
+   report.samples.longMovement=[];
+   for(let i=0;i<12;i++){
+    await page.mouse.move(pad.x+pad.width*(i%2?.15:.85),pad.y+pad.height*(i%3?.15:.85));await page.mouse.down();await page.waitForTimeout(4000);await page.mouse.up();
+    report.samples.longMovement.push(await sample('walking-'+i));
+   }
+   report.checks.reusedPresentationImage=await page.evaluate(()=>!!window.cs16ImageBefore&&window.cs16ImageBefore===window.cs16Module.cs16PresentationImage);
+   report.checks.continuedFrames=await page.evaluate(()=>window.cs16FrameCount>300);
+  }
   if(!Object.values(report.checks).every(Boolean))throw Error('An original-game state check did not pass');
   cachePhase=true;await page.reload();await page.waitForFunction(()=>window.cs16FrameCount>30,null,{timeout:90000});
   report.checks.cachedReload=reloadDownloads.length===0;report.reloadResourceRequests=reloadDownloads;
+  if(process.env.CS16_TEST_LONG_MOVEMENT==='1')report.checks.previousRunSurvivesReload=await page.evaluate(()=>{const p=window.cs16Diagnostics().previousRun;return p?.snapshot?.frameCount>300&&p.snapshot.runtime?.connection===5&&p.history.length>0});
   if(!report.checks.cachedReload)throw Error('Reload downloaded unchanged program or game resource packs');
  }catch(e){report.error=report.error||e.message;await shot('failure').catch(()=>{});report.diagnostics=await page.evaluate(()=>window.cs16Diagnostics?.()).catch(()=>null)}
  if(process.env.CS16_TEST_WEBSOCKET_DENIED==='1')report.deniedWebSockets=await page.evaluate(()=>window.cs16DeniedWebSockets).catch(()=>null);

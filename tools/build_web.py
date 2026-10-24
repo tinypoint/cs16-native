@@ -24,7 +24,7 @@ def main():
   target=out/'adapter-probe.js'
   subprocess.run([str(emcc),'-O1','-I',str(inc),'-I',str(ROOT/'runtime/win32'),'-I',str(ROOT/'runtime/guest'),'-I',str(ROOT/'vendor/pcrecomp/runtime/recomp32'),str(ROOT/'runtime/web/guest_memory.c'),str(ROOT/'runtime/web/iphlpapi.c'),str(ROOT/'runtime/web/adapter_probe.c'),str(ROOT/'runtime/web/socket_options.c'),'-sENVIRONMENT=node','-sINITIAL_MEMORY=67108864','-sALLOW_MEMORY_GROWTH=1','-o',str(target)],env=env,check=True)
   p=subprocess.run([str(node),str(target)],capture_output=True,text=True,check=True);(ROOT/'logs/web-adapter-probe.log').write_text(p.stdout+p.stderr);print(p.stdout);return
- sources=[];entries=[];selected={int(a,0) for a in json.loads(args.entry_selection.read_text())['roots']} if args.entry_selection else None
+ sources=[];entries=[];updater_disabled=False;selected={int(a,0) for a in json.loads(args.entry_selection.read_text())['roots']} if args.entry_selection else None
  for name in MODULES:
   folder=ROOT/'.local/lift'/name;result=json.loads((folder/'result.json').read_text());assert not result['generationErrors'],name
   gen=out/'generated'/name;gen.mkdir(parents=True,exist_ok=True);(gen/'recomp_funcs.h').write_bytes((folder/'recomp_funcs.h').read_bytes())
@@ -32,6 +32,15 @@ def main():
   for p in sorted(folder.glob('recomp_*.c')):
    if p.name=='recomp_dispatch.c':continue
    s=materialize(name,p.name,p.read_text(),result['inputSha256'])
+   if name=='core' and p.name=='recomp_0000.c':
+    # The uploaded repack schedules its Windows software updater 60s after
+    # Core::Get. That updater cannot update an immutable browser deployment.
+    # Disable only this registration; retain the original engine/game code.
+    assert result['inputSha256']=='9e4c01711b697e969cde61ebe2d02838c399fb0b4b0f59cbb180c0860f2a4067','Review updater policy for this Core.dll'
+    timer='    RECOMP_ICALL(MEM32(0x4808B2A0)); /* 0x480027C7: call dword ptr [0x4808b2a0] */'
+    assert s.count(timer)==1,'Original updater timer registration changed'
+    s='#include <stdio.h>\n'+s.replace(timer,'    esp += 16; eax = 0; /* Browser policy: no Windows self-updater timer. */\n    fprintf(stderr,"[web-updater] Windows package automatic updater disabled in browser\\n");')
+    updater_disabled=True
    if args.trace_server and name in ('hw','mp'):
     if name=='hw':
      for address in ['01D2A880','01D2A8D0','01D2A960']:
@@ -74,6 +83,7 @@ def main():
     s=''.join(parts)
    s=s.replace('#include "recomp_types.h"','#include "recomp_types.h"\n#include "cs16_dispatch.h"');target=gen/p.name;target.write_text(s);sources.append(target)
  entries.sort();assert len(entries)==len({a for a,_ in entries})
+ assert updater_disabled,'Browser updater policy was not applied'
  if selected is not None and (unknown:=selected-{a for a,_ in entries}):raise SystemExit('Selected original entries are absent from these modules: '+str(sorted(unknown)))
  dispatch=host/'combined_dispatch.c';dispatch.write_text('#include "recomp_types.h"\n'+''.join('void '+n+'(void);\n' for _,n in entries)+'const recomp_dispatch_entry_t recomp_dispatch_table[]={\n'+''.join(f'{{0x{a:08X},{n}}},\n' for a,n in entries)+'};\nconst uint32_t recomp_dispatch_count='+str(len(entries))+';\n')
  for p in sorted((ROOT/'runtime/win32').glob('*.c')):

@@ -58,3 +58,16 @@ Web 启动参数增加原引擎提供的 `-nomaster`，关闭本地局默认向�
 回归运行：`CS16_TEST_WEBSOCKET_DENIED=1` 配合 `tools/check_web_gameplay.cjs`，在浏览器中同步拒绝外部 WebSocket，检查本机地图、角色、移动、转向、开火及缓存刷新；此模拟不等同于 iPhone 实机验证。
 
 回归结果：v0.0.5 复现同样的 NO ERROR 致命退出，v0.0.6 的地图、角色、移动、转向、射击和缓存刷新全部通过。见 [前后对照](evidence/web-safari-network-fix.json)。
+
+
+## v0.0.7：关闭 Windows 整合包更新器并保留跨刷新诊断
+
+连续移动测试可复现开局后中止。源程序核对发现，上传整合包的 Core.dll 在 `0x480027C7` 注册一个 60,000 毫秒的定时器，回调为 `0x480018C0`；该回调进入 Windows 包更新器，模块包含 `UpdateThread::Startup`、`UpdateThread::DownloadUpdatePackages` 等实现。它先请求 `std::locale("chs")`，随后使用 Windows 版本、Shell 和网络接口。此前只覆盖了更短的游戏输入测试，未跨过这个定时任务。
+
+最终方案仅在 Web 构建时关闭这一处 Windows 自动更新定时器注册。该任务无法更新 Vercel 的浏览器部署，不属于地图、玩家或战斗执行路径。转换补丁绑定 Core.dll SHA-256 `9e4c01711b697e969cde61ebe2d02838c399fb0b4b0f59cbb180c0860f2a4067` 并检查原调用位置只出现一次；原文件和 macOS 构建代码不变。补丁仅作用于 Web 的转换产物。
+
+绘图层复用 ImageData，避免每帧分配约 1.2 MiB，只在分辨率变化时重建。前端每三秒保存状态和最近日志，重新载入后的诊断包含 previousRun；再次在初始化阶段刷新也保留上一段有效游戏记录。记录不能单凭 Wasm 内存数字确认 Safari 系统终止原因。
+
+验证命令：`CS16_TEST_LONG_MOVEMENT=1 CS16_TEST_WEBSOCKET_DENIED=1` 配合 `tools/check_web_gameplay.cjs`，包含 48 秒交替方向移动、实际原 HUD 状态、帧持续更新、绘图对象复用以及刷新后的历史诊断。桌面回归不能替代 iPhone 实机验证，反复语音现象仍待手机复核。
+
+最终回归全部通过：地图、角色、移动、转向、开火、持续帧、同一绘图对象复用、缓存刷新和上一局记录恢复。见 [运行稳定性证据](evidence/web-runtime-stability.json)。

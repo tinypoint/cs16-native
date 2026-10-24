@@ -4,15 +4,25 @@
 (async()=>{
  const status=document.getElementById('status'),version=document.getElementById('version');
  const logs=[];let reachedFrame=false,appVersion='…';
+ const readStored=key=>{try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}};
+ const lastRun=readStored('cs16-preview-last');
+ const previousRun=lastRun?.snapshot?.frameCount>0||lastRun?.frame?lastRun:readStored('cs16-previous-run')||lastRun,previousFatal=readStored('cs16-fatal');
+ if(previousRun)try{localStorage.setItem('cs16-previous-run',JSON.stringify(previousRun))}catch{}
+ const history=[];let phase='读取资源',lifecycle='active';
  let firstError='';
  function showError(error){firstError ||= window.cs16Fatal?.message||String(error);document.body.classList.add('failed');status.textContent='运行出错：'+firstError;save()}
  let priorFrames=0,fps='—',copyUntil=0;
- window.cs16Diagnostics=()=>({time:new Date().toISOString(),version:appVersion,browser:navigator.userAgent,isolated:crossOriginIsolated,frameCount:window.cs16FrameCount||0,fps,runtime:window.cs16RuntimeInfo||null,input:window.cs16InputDiagnostics||null,fatal:window.cs16Fatal||null,status:status.textContent,logs:logs.slice(-160)});
+ const snapshot=()=>({time:new Date().toISOString(),version:appVersion,phase,lifecycle,visibility:document.visibilityState,frameCount:window.cs16FrameCount||0,fps,runtime:window.cs16RuntimeInfo||null,input:window.cs16InputDiagnostics||null,fatal:window.cs16Fatal||null,status:status.textContent});
+ window.cs16Diagnostics=()=>({...snapshot(),browser:navigator.userAgent,isolated:crossOriginIsolated,previousRun,previousFatal,history:history.slice(),logs:logs.slice(-160)});
  version.addEventListener('click',async()=>{const report=JSON.stringify(window.cs16Diagnostics(),null,2);try{await navigator.clipboard.writeText(report);copyUntil=Date.now()+2500;version.textContent='诊断已复制'}catch{version.textContent='复制失败，请再点一次'}});
  setInterval(()=>{const frames=window.cs16FrameCount||0;fps=String(frames-priorFrames);priorFrames=frames;if(Date.now()>copyUntil)version.textContent='v'+appVersion+' · FPS '+fps+' · 复制诊断'},1000);
- const save=()=>{try{localStorage.setItem('cs16-preview-last',JSON.stringify({time:new Date().toISOString(),version:version.textContent,frame:reachedFrame,logs:logs.slice(-160)}))}catch{}};
+ const save=()=>{try{localStorage.setItem('cs16-preview-last',JSON.stringify({snapshot:snapshot(),history:history.slice(),logs:logs.slice(-160)}))}catch{}};
+ setInterval(()=>{history.push(snapshot());if(history.length>24)history.shift();save()},3000);
+ document.addEventListener('visibilitychange',save);
+ window.addEventListener('pagehide',()=>{lifecycle='pagehide';save()});
+ window.addEventListener('pageshow',()=>{lifecycle='active'});
  function output(value){const line=String(value);logs.push(line);if(logs.length>400)logs.shift();console.log(line);
-  if(line.includes('[web-preview] original pixels presented')){reachedFrame=true;document.body.classList.add('has-frame');status.textContent='原程序正在运行';save()}
+  if(line.includes('[web-preview] original pixels presented')){reachedFrame=true;phase='运行中';document.body.classList.add('has-frame');status.textContent='原程序正在运行';save()}
   else if(/\[MessageBox\]|FATAL:|\[guest-memory-web\]|\[web-unloaded\]|Aborted\(|uncaught exception/.test(line))showError(line);
  }
  window.addEventListener('error',event=>{logs.push(event.message);showError(event.message)});
@@ -49,7 +59,7 @@
  }
  mountPack(pack);pack=null;
  if(preview.gameplay)for(const part of preview.gameplay){const gameplay=await decoded(part,'地图资源');mountPack(gameplay)}
- pack=null;window.cs16Module=module;bindInput(module);status.textContent='原程序正在初始化…';save();module.callMain(['hl.exe']);
+ pack=null;window.cs16Module=module;bindInput(module);phase='初始化';status.textContent='原程序正在初始化…';save();module.callMain(['hl.exe']);
 })().catch(error=>{document.getElementById('status').textContent=String(error.message||error);console.error(error)});
 
 function bindInput(module){

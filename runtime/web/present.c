@@ -23,7 +23,9 @@ int cs16_web_present(int width,int height){
  MAIN_THREAD_EM_ASM({return (function(){
   const output=document.getElementById('display');if(!output)throw new Error('Missing presentation canvas');
   if(output.width!==$1||output.height!==$2){output.width=$1;output.height=$2;document.getElementById('stage').style.aspectRatio=$1+'/'+$2;}
-  const image=new ImageData($1,$2),pitch=$1*4;
+  let image=Module.cs16PresentationImage;
+  if(!image||image.width!==$1||image.height!==$2)image=Module.cs16PresentationImage=new ImageData($1,$2);
+  const pitch=$1*4;
   for(let row=0;row<$2;row++){const start=$0+($2-1-row)*pitch;image.data.set(HEAPU8.subarray(start,start+pitch),row*pitch);}
   for(let i=3;i<image.data.length;i+=4)image.data[i]=255;
   output.getContext('2d',{alpha:false}).putImageData(image,0,0);
