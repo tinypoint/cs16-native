@@ -7,6 +7,7 @@ const sha=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'
  const options={headless:true,args:['--enable-unsafe-swiftshader']};
  if(process.env.CS16_BROWSER_EXECUTABLE)options.executablePath=process.env.CS16_BROWSER_EXECUTABLE;
  const browser=await pw.chromium.launch(options),context=await browser.newContext({viewport:{width:393,height:852},hasTouch:true,isMobile:true,deviceScaleFactor:2}),page=await context.newPage();
+ if(process.env.CS16_TEST_WEBSOCKET_DENIED==='1')await context.addInitScript(()=>{window.cs16DeniedWebSockets=[];window.WebSocket=class{constructor(url){window.cs16DeniedWebSockets.push(String(url));throw new DOMException('External WebSocket denied (Safari failure regression)','SecurityError')}}});
  const stage=path.join(root,'.local/web-publish'),manifest=JSON.parse(fs.readFileSync(path.join(stage,'manifest.json'))),preview=manifest.preview;
  const asset=p=>path.join(stage,p.replace(/^\//,''));
  const build={loaderSha256:sha(asset(preview.base+'cs16-web.js')),runtimeSha256:preview.runtime.sha256,resourceSha256:preview.resources.sha256,gameplaySha256:(preview.gameplay||[]).map(p=>p.sha256),frontendSha256:Object.fromEntries(['index.html','app.js','style.css'].map(n=>[n,sha(asset(n))]))};
@@ -27,7 +28,7 @@ const sha=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'
   // Turning touch controls on at the title screen must never disable menu taps.
   await page.locator('#touch-toggle').click();
   rect=await page.locator('#display').boundingBox();await click(.12,.66);await page.waitForTimeout(1200);await shot('new-game-menu');await click(.57,.94);await page.waitForTimeout(700);await shot('map-loading');
-  await page.waitForFunction(()=>window.cs16RuntimeInfo?.connection===5&&window.cs16RuntimeInfo?.server===2,null,{timeout:60000});
+  await page.waitForFunction(()=>{if(window.cs16Fatal)throw Error(window.cs16Fatal.message);return window.cs16RuntimeInfo?.connection===5&&window.cs16RuntimeInfo?.server===2},null,{timeout:60000});
   report.checks.map=true;await shot('welcome');await click(.22,.78);await page.waitForTimeout(1000);await click(.23,.265);await page.waitForTimeout(1200);await shot('class-menu');await click(.23,.265);
   await page.waitForFunction(()=>window.cs16RuntimeInfo?.weaponUpdates>0&&window.cs16RuntimeInfo?.clip>0&&window.cs16RuntimeInfo?.clip<255,null,{timeout:20000});
   await page.waitForTimeout(1500);const initial=await sample('spawn');report.checks.character=true;await shot('spawn');
@@ -52,6 +53,7 @@ const sha=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'
   report.checks.cachedReload=reloadDownloads.length===0;report.reloadResourceRequests=reloadDownloads;
   if(!report.checks.cachedReload)throw Error('Reload downloaded unchanged program or game resource packs');
  }catch(e){report.error=report.error||e.message;await shot('failure').catch(()=>{});report.diagnostics=await page.evaluate(()=>window.cs16Diagnostics?.()).catch(()=>null)}
+ if(process.env.CS16_TEST_WEBSOCKET_DENIED==='1')report.deniedWebSockets=await page.evaluate(()=>window.cs16DeniedWebSockets).catch(()=>null);
  fs.writeFileSync(path.join(root,'logs/web-browser-gameplay.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify({checks:report.checks,samples:report.samples,error:report.error}));
  await Promise.race([browser.close(),new Promise(r=>setTimeout(r,2000))]);process.exit(report.error?1:0);
 })().catch(e=>{console.error(e);process.exit(1)});

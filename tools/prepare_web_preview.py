@@ -26,7 +26,7 @@ def main():
    manifest['preview']['gameplay'].append({'url':'/'+destination,'bytes':extra['bytes'],'decodedBytes':extra['decodedBytes'],'sha256':extra['sha256'],'scope':extra['scope']})
  if args.interactive:
   assert manifest['preview'].get('gameplay'),'Offline-map resources are required'
-  manifest.update(version='0.0.5',message='原程序离线地图开发版，尚待 iPhone 实机验证。')
+  manifest.update(version='0.0.6',message='原程序离线地图开发版，尚待 iPhone 实机验证。')
   manifest['preview']['mode']='original-wasm-offline-map'
   if not args.local_unverified:
    expected={'loaderSha256':hashlib.sha256(js).hexdigest(),'runtimeSha256':hashlib.sha256(binary).hexdigest(),'resourceSha256':info['sha256'],'gameplaySha256':[p['sha256'] for p in manifest['preview']['gameplay']],'frontendSha256':{name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ['index.html','app.js','style.css']}}

@@ -4,12 +4,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>Counter-Strike 1.6 · Wasm 开发版</title>
-<link rel="stylesheet" href="style.css?v=0.0.5">
+<link rel="stylesheet" href="style.css?v=0.0.6">
 <body>
 <main id="game-window"><div id="stage">
  <canvas id="display" width="640" height="480" aria-label="原程序在 Wasm 中绘制的画面"></canvas>
  <div id="notice" role="status" aria-live="polite"><p id="status">正在载入原程序…</p></div>
- <button id="version" type="button" aria-label="复制游戏诊断">v0.0.5 · 复制诊断</button>
+ <button id="version" type="button" aria-label="复制游戏诊断">v0.0.6 · 复制诊断</button>
 </div></main>
 <button id="touch-toggle" hidden type="button" aria-pressed="false">触控</button>
 <button id="mouse-lock" hidden type="button" aria-label="锁定鼠标以转动视角">鼠标</button>
@@ -23,6 +23,6 @@
  <button id="game-menu" data-key="27" data-scan="1">菜单</button>
 </div>
 <canvas id="canvas" width="640" height="480" aria-hidden="true"></canvas>
-<script src="app.js?v=0.0.5"></script>
+<script src="app.js?v=0.0.6"></script>
 </body>
 </html>

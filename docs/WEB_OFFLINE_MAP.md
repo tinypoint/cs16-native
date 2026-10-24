@@ -45,3 +45,16 @@ v0.0.4 已在普通桌面 Chrome 155.0.8059.85 中通过原程序离线地图与
 版本信息现在显示 FPS，并可点击复制当前浏览器、帧数、输入和异常诊断；它放在页面顶部，避免遮住原生菜单的 Start 按钮。保留 Core 的已转换回调，避免进入原初始化／收尾路径时缺少间接调用函数。
 
 393×852 的移动端 Chromium 环境已验证：提前启用触控仍可点主菜单，随后可开图、选人物、移动、转向、射击与缓存刷新。见 [移动菜单修复检查](evidence/web-menu-touch-fix.json)。此验证不能替代 iPhone Safari 实机体验。
+
+
+## v0.0.6：Safari 开始游戏时网络错误中止
+
+iPhone 诊断显示本机服务器状态已为 2，但尚无客户端 HUD 更新；随后 `w_sendto errno=23`，原程序报告 `NET_SendPacket ERROR: NO ERROR` 并弹出 Fatal Error。桌面 Chrome 中让 WebSocket 构造同步抛出 SecurityError，可以复现同一故障。
+
+Web 启动参数增加原引擎提供的 `-nomaster`，关闭本地局默认向公网主服务器上报的行为。用户上传包的 `readme.txt` 第 47 行明确说明：即使 `sv_lan 1` 也默认上报，可以用该参数退出上报。原游戏文件不变，macOS 启动参数不变。
+
+同时修正 Web Winsock 失败日志：在输出日志之前保存 errno 并转换为 WSA 错误码，避免代理标准输出覆盖 errno 后错误地报告 NO ERROR。页面保留首次具体错误（含原 MessageBox 内容），不再用后续通用 Aborted 文本覆盖。
+
+回归运行：`CS16_TEST_WEBSOCKET_DENIED=1` 配合 `tools/check_web_gameplay.cjs`，在浏览器中同步拒绝外部 WebSocket，检查本机地图、角色、移动、转向、开火及缓存刷新；此模拟不等同于 iPhone 实机验证。
+
+回归结果：v0.0.5 复现同样的 NO ERROR 致命退出，v0.0.6 的地图、角色、移动、转向、射击和缓存刷新全部通过。见 [前后对照](evidence/web-safari-network-fix.json)。

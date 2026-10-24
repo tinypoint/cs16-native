@@ -6,9 +6,9 @@
 
 ## 当前状态
 
-Web v0.0.5 开发构建已在普通 Chrome 中通过：原程序加载 `de_dust2`、触屏选队与角色、虚拟摇杆移动、拖动转向、开火和刷新缓存。测试检查原 HUD 回调中的实际玩家坐标、视角与弹匣变化。详见 [离线地图与操作](docs/WEB_OFFLINE_MAP.md) 和 [验证记录](docs/evidence/web-offline-map-check.json)。
+Web v0.0.6 开发构建已在普通 Chrome 中通过：原程序加载 `de_dust2`、触屏选队与角色、虚拟摇杆移动、拖动转向、开火和刷新缓存。测试检查原 HUD 回调中的实际玩家坐标、视角与弹匣变化。详见 [离线地图与操作](docs/WEB_OFFLINE_MAP.md) 和 [验证记录](docs/evidence/web-offline-map-check.json)。
 
-**iPhone Safari 实机反馈正在跟进；完整对局、声音输出和外部多人联机尚未验证。** v0.0.5 已修复菜单文字缺失、提前打开触控后菜单不能点击的问题，并增加可点击复制的 FPS／运行诊断。 macOS ARM64 宿主已加载相同原地图，处理选队／角色／移动／开火输入并持续渲染两千多帧；尚未整理成可交付的 Mac 应用。
+**iPhone Safari 实机反馈正在跟进；完整对局、声音输出和外部多人联机尚未验证。** v0.0.6 修复开始本地游戏时公网主服务器上报失败导致退出的问题；同步拒绝外部 WebSocket 的回归已通过全部离线动作和缓存检查，见 [修复证据](docs/evidence/web-safari-network-fix.json)。 v0.0.5 已修复菜单文字缺失、提前打开触控后菜单不能点击的问题，并增加可点击复制的 FPS／运行诊断。 macOS ARM64 宿主已加载相同原地图，处理选队／角色／移动／开火输入并持续渲染两千多帧；尚未整理成可交付的 Mac 应用。
 
 早期转换与对照记录见 [进度与证据](docs/STATUS.md)、[窗口与图形](docs/NATIVE_DISPLAY.md)、[异常处理](docs/NATIVE_EXCEPTION.md)、[内嵌网页组件](docs/WEBBROWSER.md)、[音频与系统接口](docs/AUDIO_STARTUP.md) 和 [原程序第一帧](docs/FIRST_FRAME.md)。
 
@@ -16,7 +16,7 @@ Web v0.0.5 开发构建已在普通 Chrome 中通过：原程序加载 `de_dust2
 
 - 源码仓库：https://github.com/tinypoint/cs16-native （同时维护 macOS 与 Web）。
 - 固定 HTTPS 入口：https://cs16-native.vercel.app/ 。
-- Web 离线地图测试版本：v0.0.5。原引擎在浏览器本机执行，不串流电脑画面。按用户授权，转换后控制流跳过启动和本机 LAN 的 CD Key 门禁，原输入文件不变；这不提供 Steam 身份或外部联机认证。清单顶层 `ready=false`，仅开放开发测试 `preview`。
+- Web 离线地图测试版本：v0.0.6。原引擎在浏览器本机执行，不串流电脑画面。按用户授权，转换后控制流跳过启动和本机 LAN 的 CD Key 门禁，原输入文件不变；这不提供 Steam 身份或外部联机认证。清单顶层 `ready=false`，仅开放开发测试 `preview`。
 - Vercel 项目：`cs16-web`。网页目录为 `web/`，与红警项目独立。
 - 首屏实验通过 `tools/prepare_web_preview.py` 与 `tools/publish_web_preview.py` 发布；Vercel 返回未安装 GitHub 集成，尚未启用推送自动部署。详细步骤见 [部署说明](docs/DEPLOYMENT.md)。
 

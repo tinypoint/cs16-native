@@ -1,0 +1,192 @@
+{
+  "version": "0.0.6",
+  "scenario": "External WebSocket constructor synchronously throws SecurityError, matching Safari failure",
+  "before": {
+    "version": "0.0.5",
+    "error": "Aborted(native code called abort())",
+    "fatal": {
+      "time": "2026-10-24T07:28:56.977Z",
+      "message": "game requested MessageBoxA",
+      "function": 31167744,
+      "runtime": {
+        "connection": 2,
+        "server": 2,
+        "memoryBytes": 471859200,
+        "clientUpdates": 0,
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "weaponUpdates": 0,
+        "weaponId": 0,
+        "clip": 0
+      }
+    },
+    "deniedWebSockets": [
+      "ws://207.173.177.11:27030/",
+      "ws://207.173.177.12:27030/",
+      "ws://half-life.east.won.net:27010/"
+    ],
+    "matchingLogs": [
+      "[web-socket-error] w_sendto errno=23 from=01dd1a70",
+      "[guest] NET_SendPacket ERROR: NO ERROR",
+      "[MessageBox] Fatal Error: NET_SendPacket ERROR: NO ERROR"
+    ]
+  },
+  "after": {
+    "checks": {
+      "map": true,
+      "character": true,
+      "movement": true,
+      "turning": true,
+      "firing": true,
+      "cachedReload": true
+    },
+    "deniedWebSockets": [],
+    "error": null,
+    "build": {
+      "loaderSha256": "606ff586cd3a3581aaafd2e3746cd34d1353342c42262a33d1181bb5c9022a67",
+      "runtimeSha256": "5be69fbb4cffd826aecfc262ca746a62e6eb72119e2eafaa962cd5f1d18d2aa2",
+      "resourceSha256": "9f98ea7d103f760a70d18b8551dab4e5a4837174653297aa73a127fab17da8ae",
+      "gameplaySha256": [
+        "44e0c336e96d93007706ef476ac461cc78a0a9378378aefb13e2732a36995ad4",
+        "13f4d0d2d1bf9151987d7f0cdb81b226a7fc1655e97804c9f08904e5164dfb1c",
+        "0a04e5686ca0fb800e237354cdadc110f3d708437be1006e354dacfd0cb97561",
+        "e8424a335f6ff8bdee35e67b4bb8a2227199b79a40709055e1af4f009f832fdc",
+        "f7bcad6342eb699860184d48bcd038823c99a9f93703e69ff46abaf1c33e00b8",
+        "84ef306aca29eeb51f2fd27dec14270cf3a5fd0e16e181403f180bc43a4ac3be",
+        "69021258ad4a52379cd907379a0c2d185eebec520e955ab26a1d27f4e1cfbd98",
+        "7901fd2d76a4cb95895cdefc60ca36a4c6dc1869a2e11ef1c2ad7928054d934a",
+        "e31565014fa9f8f146a5481c1c701565ccb38e42aa97d3bb019e5a4aa5bbdfe2",
+        "a82aba63240dd2f6ce271762ea0650732354675cb38681fe23f15445eafacd6c",
+        "f83b3267fc6c578885655aab83bb9b4021ea88509ba66d23701e8a3773cd8328",
+        "d56302875918b3ae7cc5f5d00eeb671d572578d59f1f55a26fb587328e5c403f",
+        "849db20accfdae715dd244b15e1b67da66b984708747bc54df7551be2fcdda53",
+        "10595fbdcc22c5b6dbb022d7e370e830832f5c73e2976c7d9b7f2d0178e05a60",
+        "a88a1fac8435aca3d466c0ddc0e306a137af54e5a35a6bc2637ef0530f4ed24a",
+        "ee729e2de5bc49e9f0e95efb4215d9dbcbb0180ea115a07a3d44a1716d121e3a",
+        "b106a2be29365c2c6fe8d2d2598857304865a84e8e588e70dc99baf7e6b05140",
+        "63d849d8759064a3896a7a4e1676e3ef76844f82b3da5e9b814d44dc99f9b067",
+        "5324c5c72f26bf0a2f9a4ac58e923b4598fd225e526593db1d116b3fa9518c2b"
+      ],
+      "frontendSha256": {
+        "index.html": "39ed169d8f1af6a45f9a014d417ec54e317d3ba45963642a6e94b13eaeded786",
+        "app.js": "4299418c6b1b41bc8dd425093b6890650dae649550c1839d4798168d2e5fa7c5",
+        "style.css": "89ea0c5550eb31b30595fe5aea4ba693f7c463752d6d217fe732990ee5b49023"
+      }
+    },
+    "samples": {
+      "spawn": {
+        "connection": 5,
+        "server": 2,
+        "memoryBytes": 471859200,
+        "clientUpdates": 284,
+        "origin": [
+          -832,
+          -704,
+          164.03125
+        ],
+        "angles": [
+          0,
+          158.9996337890625,
+          0
+        ],
+        "weaponUpdates": 1,
+        "weaponId": 17,
+        "clip": 20
+      },
+      "moved-forward": {
+        "connection": 5,
+        "server": 2,
+        "memoryBytes": 471859200,
+        "clientUpdates": 492,
+        "origin": [
+          -879.9921875,
+          -656.03125,
+          164.03125
+        ],
+        "angles": [
+          0,
+          158.9996337890625,
+          0
+        ],
+        "weaponUpdates": 1,
+        "weaponId": 17,
+        "clip": 20
+      },
+      "moved": {
+        "connection": 5,
+        "server": 2,
+        "memoryBytes": 471859200,
+        "clientUpdates": 492,
+        "origin": [
+          -879.9921875,
+          -656.03125,
+          164.03125
+        ],
+        "angles": [
+          0,
+          158.9996337890625,
+          0
+        ],
+        "weaponUpdates": 1,
+        "weaponId": 17,
+        "clip": 20
+      },
+      "turned": {
+        "connection": 5,
+        "server": 2,
+        "memoryBytes": 471859200,
+        "clientUpdates": 587,
+        "origin": [
+          -879.9921875,
+          -656.03125,
+          164.03125
+        ],
+        "angles": [
+          0,
+          153.1109619140625,
+          0
+        ],
+        "weaponUpdates": 1,
+        "weaponId": 17,
+        "clip": 20
+      },
+      "fired": {
+        "connection": 5,
+        "server": 2,
+        "memoryBytes": 471859200,
+        "clientUpdates": 707,
+        "origin": [
+          -879.9921875,
+          -656.03125,
+          164.03125
+        ],
+        "angles": [
+          0,
+          153.1109619140625,
+          0
+        ],
+        "weaponUpdates": 2,
+        "weaponId": 17,
+        "clip": 19
+      }
+    },
+    "networkErrors": [
+      "[web-socket-error] w_setsockopt errno=50 wsa=10050 from=01dd1a82",
+      "[web-socket-error] w_setsockopt errno=50 wsa=10050 from=01dd1a82",
+      "[web-socket-error] w_setsockopt errno=50 wsa=10050 from=01dd1a82",
+      "[web-socket-error] w_bind errno=3 wsa=10048 from=01dd1a7c",
+      "[web-socket-error] w_bind errno=3 wsa=10048 from=01dd1a7c",
+      "[web-socket-error] w_getsockname errno=8 wsa=10038 from=01dd1a94"
+    ]
+  },
+  "physicalIPhoneRetest": false,
+  "nativeSourcesChanged": false
+}

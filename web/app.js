@@ -4,6 +4,8 @@
 (async()=>{
  const status=document.getElementById('status'),version=document.getElementById('version');
  const logs=[];let reachedFrame=false,appVersion='…';
+ let firstError='';
+ function showError(error){firstError ||= window.cs16Fatal?.message||String(error);document.body.classList.add('failed');status.textContent='运行出错：'+firstError;save()}
  let priorFrames=0,fps='—',copyUntil=0;
  window.cs16Diagnostics=()=>({time:new Date().toISOString(),version:appVersion,browser:navigator.userAgent,isolated:crossOriginIsolated,frameCount:window.cs16FrameCount||0,fps,runtime:window.cs16RuntimeInfo||null,input:window.cs16InputDiagnostics||null,fatal:window.cs16Fatal||null,status:status.textContent,logs:logs.slice(-160)});
  version.addEventListener('click',async()=>{const report=JSON.stringify(window.cs16Diagnostics(),null,2);try{await navigator.clipboard.writeText(report);copyUntil=Date.now()+2500;version.textContent='诊断已复制'}catch{version.textContent='复制失败，请再点一次'}});
@@ -11,9 +13,9 @@
  const save=()=>{try{localStorage.setItem('cs16-preview-last',JSON.stringify({time:new Date().toISOString(),version:version.textContent,frame:reachedFrame,logs:logs.slice(-160)}))}catch{}};
  function output(value){const line=String(value);logs.push(line);if(logs.length>400)logs.shift();console.log(line);
   if(line.includes('[web-preview] original pixels presented')){reachedFrame=true;document.body.classList.add('has-frame');status.textContent='原程序正在运行';save()}
-  else if(/FATAL:|\[guest-memory-web\]|\[web-unloaded\]|Aborted\(|uncaught exception/.test(line)){document.body.classList.add('failed');status.textContent='原程序停止：'+line;save()}
+  else if(/\[MessageBox\]|FATAL:|\[guest-memory-web\]|\[web-unloaded\]|Aborted\(|uncaught exception/.test(line))showError(line);
  }
- window.addEventListener('error',event=>{logs.push(event.message);document.body.classList.add('failed');status.textContent='运行出错：'+event.message;save()});
+ window.addEventListener('error',event=>{logs.push(event.message);showError(event.message)});
  const manifest=await(await fetch('manifest.json',{cache:'no-store'})).json();appVersion=manifest.version;version.textContent='v'+appVersion+' · 复制诊断';
  const preview=manifest.preview;if(!preview?.ready){status.textContent=manifest.message;return}
  if(!crossOriginIsolated||typeof SharedArrayBuffer==='undefined')throw new Error('此预览需要支持隔离线程的 HTTPS 浏览器');
@@ -37,7 +39,7 @@
  await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=preview.base+'cs16-web.js';script.onload=resolve;script.onerror=()=>reject(new Error('程序加载器下载失败'));document.head.append(script)});
  let compiled=await WebAssembly.compile(program);program=null;
  let failInstantiation;const failedInstantiation=new Promise((resolve,reject)=>{failInstantiation=reject});
- const module=await Promise.race([createCS16Web({canvas:document.getElementById('canvas'),noInitialRun:true,instantiateWasm:(imports,receive)=>{WebAssembly.instantiate(compiled,imports).then(instance=>receive(instance,compiled)).catch(failInstantiation);return {}},locateFile:p=>preview.base+p,print:output,printErr:output,onAbort:error=>{document.body.classList.add('failed');status.textContent='原程序停止：'+String(error);save()}}),failedInstantiation]);compiled=null;
+ const module=await Promise.race([createCS16Web({canvas:document.getElementById('canvas'),noInitialRun:true,instantiateWasm:(imports,receive)=>{WebAssembly.instantiate(compiled,imports).then(instance=>receive(instance,compiled)).catch(failInstantiation);return {}},locateFile:p=>preview.base+p,print:output,printErr:output,onAbort:showError}),failedInstantiation]);compiled=null;
  function mountPack(pack){
   const magic=new TextDecoder().decode(pack.subarray(0,8)),length=new DataView(pack.buffer).getUint32(8,true);if(magic!=='CS16PK01'||length>4*1048576||12+length>pack.length)throw new Error('无效的启动资源包');
  const table=JSON.parse(new TextDecoder().decode(pack.subarray(12,12+length)));if(table.schema!==1||!Array.isArray(table.files)||table.files.length>10000)throw new Error('无效的资源索引');
