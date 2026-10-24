@@ -1,0 +1,12 @@
+{
+  "recordedAt": "2026-10-24T06:19:43.012385+00:00",
+  "url": "https://cs16-native.vercel.app/",
+  "version": "0.0.5",
+  "deploymentId": "dpl_4j3b6KuuNyJAeaxH7q9jcB59n5Ls",
+  "readyState": "READY",
+  "sourceCommit": "66d1f37",
+  "exactFrontend": true,
+  "resourceFilesChecked": 21,
+  "isolationHeaders": true,
+  "fullRemoteGameplayRetest": false
+}

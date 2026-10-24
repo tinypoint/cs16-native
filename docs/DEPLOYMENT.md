@@ -28,3 +28,7 @@ Vercel 项目为 `cs16-web`，根目录为 `web/`。固定地址：https://cs16-
 ## v0.0.4 交付核对
 
 部署 `dpl_bnUpGYNbW36gKL2sCjSaCpYnnvrH` 已返回 READY，固定地址已显示 v0.0.4。公开入口、脚本、样式和加载器与验证暂存文件逐字节一致；21 个程序／资源文件的大小、不可变缓存与 CORP 响应头检查通过，入口 COOP／COEP 正确。完整动作测试使用相同字节的本地部署，未重复从公网下载完整资源进行对局；iPhone Safari 仍待实机确认。见 [公开交付记录](evidence/web-offline-map-deployment.json)。
+
+## v0.0.5 菜单修复交付
+
+部署 `dpl_4j3b6KuuNyJAeaxH7q9jcB59n5Ls` 已返回 READY，固定地址确认 v0.0.5。公开前端与移动端操作验证使用的文件一致，21 个程序／资源文件的大小与缓存、隔离头检查通过。游戏资源分块沿用 v0.0.4 的内容哈希，只更新程序和前端。主菜单文字、菜单阶段触控和顶部诊断的变更见 [移动菜单修复](WEB_OFFLINE_MAP.md#v005-菜单与移动端点击修复)。
