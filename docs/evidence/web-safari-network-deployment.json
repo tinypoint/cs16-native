@@ -1,0 +1,12 @@
+{
+  "version": "0.0.6",
+  "deploymentId": "dpl_9AEuTg1cL4gg8UrkSgwVG44ntyCz",
+  "url": "https://cs16-native.vercel.app/",
+  "readyState": "READY",
+  "publicFrontendMatchesVerifiedFiles": true,
+  "resourceFilesChecked": 21,
+  "isolationHeaders": true,
+  "unchangedMapResources": true,
+  "gameplayEvidence": "web-safari-network-fix.json",
+  "fullRemoteGameplayRetest": false
+}
